@@ -11,10 +11,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
-
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -27,18 +27,28 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
-
-using Microsoft.Xna.Framework.Graphics.PackedVector;
 
 namespace Bloxel.Engine.DataStructures
 {
     public struct Block
     {
         private byte _blockType;
-        private Density[] _density;
+        private Density _density;
         private ByteBitfield[] _lightingValues;
+
+        public float Density
+        {
+            get { return _density.ToSingle(); }
+            set
+            {
+                Contract.Assert(value >= 0.0f && value <= 1.0f);
+                
+                _density.Set(value);
+            }
+        }
 
         public Block(byte blockType, float density)
             : this(blockType, density, new ByteBitfield[8])
@@ -47,7 +57,7 @@ namespace Bloxel.Engine.DataStructures
         public Block(byte blockType, float density, ByteBitfield[] b)
         {
             _blockType = blockType;
-            _density = new Density[(int)BlockVertex.TotalVertices];
+            _density = new Density(density);
             _lightingValues = b;
         }
 
@@ -70,19 +80,6 @@ namespace Bloxel.Engine.DataStructures
             int index = ((byte)vertex % 2) * 4;
 
             pair.Set(index, value, 4);
-        }
-
-        public float DensityAt(BlockVertex vertex)
-        {
-            return _density[(int)vertex].ToSingle();
-        }
-
-        public void SetDensityAt(BlockVertex vertex, float value)
-        {
-            if (value < 0 || value > 1.0f)
-                throw new ArgumentOutOfRangeException("Density cannot be less than 0 or greater than 1!");
-
-            _density[(int)vertex].Set(value);
         }
     }
 }

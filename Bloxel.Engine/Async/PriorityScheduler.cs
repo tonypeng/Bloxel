@@ -11,10 +11,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
-
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -24,6 +24,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -42,6 +43,19 @@ namespace Bloxel.Engine.Async
         private object _taskSync;
         private Thread[] _workerThreads;
 
+        public bool AllThreadsStopped
+        {
+            get
+            {
+                for (int i = 0; i < ThreadCount; i++)
+                {
+                    if (_workerThreads[i].IsAlive)
+                        return false;
+                }
+
+                return true;
+            }
+        }
         public int ThreadCount { get { return _workerThreads.Length; } }
 
         public PriorityScheduler(int threadCount)
@@ -66,6 +80,18 @@ namespace Bloxel.Engine.Async
                 _workerThreads[i].Start();
         }
 
+        public void Stop()
+        {
+            for (int i = 0; i < ThreadCount; i++)
+                Schedule(null, 0.0f);
+        }
+
+        public void ForceStop()
+        {
+            for (int i = 0; i < ThreadCount; i++)
+                _workerThreads[i].Interrupt();
+        }
+
         public void Update()
         {
             lock (_taskSync)
@@ -84,7 +110,7 @@ namespace Bloxel.Engine.Async
             lock (_taskSync)
             {
                 _tasks.Add(task);
-                Monitor.Pulse(_taskSync);
+                Monitor.Pulse(_taskSync); // signal next worker thread that we have a task ready
             }
         }
 
@@ -111,7 +137,7 @@ namespace Bloxel.Engine.Async
             }
 
             if(taskIndex >= 0)
-                _tasks.RemoveAt(taskIndex); // work like a queue; remove it from the list
+                _tasks.RemoveAt(taskIndex); // work like a queue; dequeue it from the list
 
             return ret;
         }
@@ -124,14 +150,19 @@ namespace Bloxel.Engine.Async
 
                 lock (_taskSync)
                 {
-                    if (_tasks.Count == 0) Monitor.Wait(_taskSync);
+                    try
+                    {
+                        if (_tasks.Count == 0) Monitor.Wait(_taskSync);
+                    }
+                    catch (ThreadInterruptedException)
+                    { break; } // exit
 
                     task = NextTask();
                 }
 
                 Contract.Assert(task != null);
 
-                if (task.Action == null) break;
+                if (task.Action == null) break; // null = terminate thread
 
                 task.Action();
             }

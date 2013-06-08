@@ -11,10 +11,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
-
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -35,6 +35,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 using Bloxel.Engine.Core;
+using Bloxel.Engine.Utilities;
 
 namespace Bloxel.Engine.DataStructures
 {
@@ -49,6 +50,8 @@ namespace Bloxel.Engine.DataStructures
         private VertexBuffer _vertexBuffer;
         private IndexBuffer _indexBuffer;
 
+        private int _width, _height, _length;
+
         public Block[] Blocks { get { return _blocks; } }
 
         public VertexBuffer VertexBuffer { get { return _vertexBuffer; } set { _vertexBuffer = value; } }
@@ -60,10 +63,19 @@ namespace Bloxel.Engine.DataStructures
             Contract.Assert(height > 0);
             Contract.Assert(length > 0);
 
+            _width = width;
+            _height = height;
+            _length = length;
+
             _blocks = new Block[width * height * length];
 
             _vertexBuffer = null;
             _indexBuffer = null;
+        }
+
+        public void SetBlock(int x, int y, int z, Block b)
+        {
+            _blocks[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)] = b;
         }
     }
 }

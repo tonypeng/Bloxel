@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - BlockType.cs
+ * Bloxel - DensityFunction.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -24,20 +24,15 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+namespace Bloxel.Engine.Core
 {
-    public enum BlockType : byte
+    public class DensityFunction
     {
-        None = 0,
-        Grass = 1,
-        Dirt = 2,
-        Stone = 3,
-        End = 4,
+
     }
 }

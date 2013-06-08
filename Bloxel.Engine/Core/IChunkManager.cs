@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - ChunkManager.cs
+ * Bloxel - IChunkManager.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -11,10 +11,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
-
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -43,7 +43,7 @@ namespace Bloxel.Engine.Core
 
         Chunk Get(int x, int y, int z);
 
-        void Update(Vector3 position);
+        void Update(Vector3 cameraPosition);
 
         void Render();
     }

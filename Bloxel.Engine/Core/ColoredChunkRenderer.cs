@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - BlockType.cs
+ * Bloxel - ColoredChunkRenderer.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -24,20 +24,37 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+
+using Bloxel.Engine.Cameras;
+using Bloxel.Engine.DataStructures;
+
+namespace Bloxel.Engine.Core
 {
-    public enum BlockType : byte
+    public class ColoredChunkRenderer : IChunkRenderer
     {
-        None = 0,
-        Grass = 1,
-        Dirt = 2,
-        Stone = 3,
-        End = 4,
+        private CameraManager _camManager;
+        private IChunkManager _chunks;
+
+        public ColoredChunkRenderer(EngineConfiguration config, CameraManager cameraManager, IChunkManager _chunkManager)
+        {
+            _camManager = cameraManager;
+            _chunks = _chunkManager;
+        }
+
+        public void RenderAll()
+        {
+
+        }
+
+        public void Render(Chunk c)
+        {
+        }
     }
 }

@@ -65,7 +65,12 @@
     <Compile Include="Async\BloxelTask.cs" />
     <Compile Include="Async\PriorityScheduler.cs" />
     <Compile Include="Async\IScheduler.cs" />
+    <Compile Include="Cameras\Camera.cs" />
+    <Compile Include="Cameras\CameraManager.cs" />
+    <Compile Include="Cameras\FreeCamera.cs" />
     <Compile Include="Core\BloxelHost.cs" />
+    <Compile Include="Core\ColoredChunkRenderer.cs" />
+    <Compile Include="Core\DensityFunction.cs" />
     <Compile Include="Core\EngineConfiguration.cs" />
     <Compile Include="Core\IChunkManager.cs" />
     <Compile Include="Core\ContentLibrary.cs" />
@@ -78,9 +83,11 @@
     <Compile Include="DataStructures\BlockType.cs" />
     <Compile Include="DataStructures\BlockVertex.cs" />
     <Compile Include="DataStructures\Chunk.cs" />
+    <Compile Include="DataStructures\ChunkBuildOperation.cs" />
     <Compile Include="DataStructures\ChunkState.cs" />
     <Compile Include="DataStructures\Density.cs" />
     <Compile Include="DataStructures\Direction.cs" />
+    <Compile Include="DataStructures\HermiteData.cs" />
     <Compile Include="DataStructures\ShortBitfield.cs" />
     <Compile Include="DataStructures\Vector3I.cs" />
     <Compile Include="Extensions\EnumExtensions.cs" />
@@ -90,6 +97,8 @@
     <Compile Include="DataStructures\ByteBitfield.cs" />
     <Compile Include="Utilities\ArrayUtil.cs" />
     <Compile Include="Utilities\ChunkUtil.cs" />
+    <Compile Include="Utilities\DualContour.cs" />
+    <Compile Include="Utilities\SimplexNoise.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

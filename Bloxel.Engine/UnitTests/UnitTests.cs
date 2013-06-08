@@ -11,10 +11,10 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
-
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -33,6 +33,7 @@ using System.Text;
 
 using Bloxel.Engine.Async;
 using Bloxel.Engine.DataStructures;
+using Bloxel.Engine.Utilities;
 
 namespace Bloxel.Engine.UnitTests
 {
@@ -98,16 +99,38 @@ namespace Bloxel.Engine.UnitTests
             Console.WriteLine("Adding task 2");
             scheduler.Schedule(() => System.Threading.Thread.Sleep(1000), 2.0f);
             Console.WriteLine("Adding task 3");
-            scheduler.Schedule(() => Console.WriteLine("Hello, world 2!"), 2.0f);
+            scheduler.Schedule(() => Console.WriteLine("Hello, world! (Lower priority)"), 2.0f);
             Console.WriteLine("Adding task 4");
-            scheduler.Schedule(() => Console.WriteLine("Hello, world 1!"), 1.0f);
+            scheduler.Schedule(() => Console.WriteLine("Hello, world! (Higher priority)"), 1.0f);
+
+            Console.ReadKey();
+        }
+
+        static void TestSimplexNoise()
+        {
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+
+            sw.Start();
+            for (int x = 0; x < 16; x++)
+            {
+                for (int y = 0; y < 128; y++)
+                {
+                    for (int z = 0; z < 16; z++)
+                    {
+                        SimplexNoise.GetNoise(x, y, z);
+                    }
+                }
+            }
+            sw.Stop();
+
+            Console.WriteLine("Done in {0}ms.", sw.ElapsedMilliseconds);
 
             Console.ReadKey();
         }
 
         public static void Main(String[] args)
         {
-            TestPriorityScheduler();
+            TestSimplexNoise();
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - BlockType.cs
+ * Bloxel - FreeCamera.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -30,14 +30,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+using Microsoft.Xna.Framework;
+
+namespace Bloxel.Engine.Cameras
 {
-    public enum BlockType : byte
+    /// <summary>
+    /// Describes a camera that is free to move and rotate.
+    /// </summary>
+    public class FreeCamera : Camera
     {
-        None = 0,
-        Grass = 1,
-        Dirt = 2,
-        Stone = 3,
-        End = 4,
+        public FreeCamera() { }
+
+        protected override void UpdateCamera()
+        {
+            _pitch = MathHelper.Clamp(_pitch, -1f * MathHelper.PiOver2, MathHelper.PiOver2);
+
+            CameraRotation = Matrix.CreateRotationX(_pitch) * Matrix.CreateRotationY(_yaw) * Matrix.CreateRotationZ(_roll);
+
+            _target = Position + CameraRotation.Forward;
+        }
+
+        public override void Zoom(float multiplier)
+        {
+            _projection = Matrix.CreatePerspectiveFieldOfView(fov / multiplier, aspectRatio, nearPlane, farPlane);
+        }
     }
 }
