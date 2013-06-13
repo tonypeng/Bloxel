@@ -33,53 +33,31 @@ using System.Text;
 
 namespace Bloxel.Engine.DataStructures
 {
-    public struct Block
+    public struct GridPoint
     {
+        public static GridPoint Full = new GridPoint(0, 1.0f);
+        public static GridPoint Empty = new GridPoint(0, 0.0f);
+
         private byte _blockType;
         private Density _density;
-        private ByteBitfield[] _lightingValues;
 
         public float Density
         {
             get { return _density.ToSingle(); }
             set
             {
-                Contract.Assert(value >= 0.0f && value <= 1.0f);
+                Contract.Assert(value >= -1.0f && value <= 1.0f);
                 
                 _density.Set(value);
             }
         }
 
-        public Block(byte blockType, float density)
-            : this(blockType, density, new ByteBitfield[8])
-        { }
-
-        public Block(byte blockType, float density, ByteBitfield[] b)
+        public GridPoint(byte blockType, float density)
         {
             _blockType = blockType;
             _density = new Density(density);
-            _lightingValues = b;
         }
 
         public byte Type { get { return _blockType; } }
-
-        public byte LightAt(BlockVertex vertex)
-        {
-            ByteBitfield pair = _lightingValues[(byte)vertex / 2];
-            int index = ((byte)vertex % 2) * 4;
-
-            return pair.Get(index, 4);
-        }
-
-        public void SetLightAt(BlockVertex vertex, byte value)
-        {
-            if (value > 15)
-                throw new ArgumentOutOfRangeException("Light value must be in the range [0, 15]!");
-
-            ByteBitfield pair = _lightingValues[(byte)vertex / 2];
-            int index = ((byte)vertex % 2) * 4;
-
-            pair.Set(index, value, 4);
-        }
     }
 }

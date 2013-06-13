@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - DensityFunction.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -30,38 +30,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+using Microsoft.Xna.Framework;
+
+namespace Bloxel.Engine.Core
 {
     /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
+    /// Provides an interface for a density function.
     /// </summary>
-    public struct Density
+    public interface IDensityFunction
     {
-        private short _density;
+        /// <summary>
+        /// Evaluates the implicit function at the specified position.
+        /// </summary>
+        /// <param name="x">The x-component of the position.</param>
+        /// <param name="y">The y-component of the position.</param>
+        /// <param name="z">The z-component of the position.</param>
+        /// <returns>The result of evaluating the implicit function at the specified position.</returns>
+        float f(float x, float y, float z);
 
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
-        {
-            _density = density;
-        }
-
-        public void Set(float f)
-        {
-            _density = (byte)(f * 32767f);
-        }
-
-        public float ToSingle()
-        {
-            return _density / 32767f;
-        }
-
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
-        }
+        /// <summary>
+        /// Evaluates the gradient of the implicit function at the specified position.
+        /// </summary>
+        /// <param name="x">The x-component of the position.</param>
+        /// <param name="y">The y-component of the position.</param>
+        /// <param name="z">The z-component of the position.</param>
+        /// <returns>The gradient vector of the implicit function at the specified position.</returns>
+        Vector3 df(float x, float y, float z);
     }
 }

@@ -45,37 +45,54 @@ namespace Bloxel.Engine.DataStructures
     public class Chunk
     {
         // Very important.
-        private Block[] _blocks;
+        private GridPoint[] _points;
+
+        private Vector3I _position;
 
         private VertexBuffer _vertexBuffer;
         private IndexBuffer _indexBuffer;
 
         private int _width, _height, _length;
 
-        public Block[] Blocks { get { return _blocks; } }
+        public GridPoint[] Points { get { return _points; } }
+
+        public Vector3I Position { get { return _position; } }
+
+        public int Width { get { return _width; } }
+        public int Height { get { return _height; } }
+        public int Length { get { return _length; } }
 
         public VertexBuffer VertexBuffer { get { return _vertexBuffer; } set { _vertexBuffer = value; } }
         public IndexBuffer IndexBuffer { get { return _indexBuffer; } set { _indexBuffer = value; } }
 
-        public Chunk(World world, int width, int height, int length)
+        public object GraphicsSync = new object();
+
+        public Chunk(World world, Vector3I position, int width, int height, int length)
         {
             Contract.Assert(width > 0);
             Contract.Assert(height > 0);
             Contract.Assert(length > 0);
 
+            _position = position;
+
             _width = width;
             _height = height;
             _length = length;
 
-            _blocks = new Block[width * height * length];
+            _points = new GridPoint[width * height * length];
 
             _vertexBuffer = null;
             _indexBuffer = null;
         }
 
-        public void SetBlock(int x, int y, int z, Block b)
+        public void SetPoint(int x, int y, int z, GridPoint b)
         {
-            _blocks[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)] = b;
+            _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)] = b;
+        }
+
+        public GridPoint PointAt(int x, int y, int z)
+        {
+            return _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)];
         }
     }
 }

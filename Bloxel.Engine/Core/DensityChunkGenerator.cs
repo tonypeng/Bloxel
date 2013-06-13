@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - DensityChunkGenerator.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -30,38 +30,41 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+using Microsoft.Xna.Framework;
+
+using Bloxel.Engine.DataStructures;
+
+namespace Bloxel.Engine.Core
 {
-    /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
-    /// </summary>
-    public struct Density
+    public class DensityChunkGenerator : IChunkGenerator
     {
-        private short _density;
+        private IDensityFunction _densityFunction;
 
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
+        public DensityChunkGenerator(IDensityFunction densityFunction)
         {
-            _density = density;
+            _densityFunction = densityFunction;
         }
 
-        public void Set(float f)
+        public void Generate(Chunk c)
         {
-            _density = (byte)(f * 32767f);
-        }
+            for (int x = 0; x < c.Width; x++)
+            {
+                for (int z = 0; z < c.Length; z++)
+                {
+                    for (int y = 0; y < c.Height; y++)
+                    {
+                        float value = _densityFunction.f(x, y, z);
 
-        public float ToSingle()
-        {
-            return _density / 32767f;
-        }
+                        if (value > 1.0f)
+                            value = 1.0f;
+                        if (value < -1.0f)
+                            value = -1.0f;
 
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
+                        GridPoint b = new GridPoint(0, value);
+                        c.SetPoint(x, y, z, b);
+                    }
+                }
+            }
         }
     }
 }

@@ -28,8 +28,11 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+
+using Microsoft.Xna.Framework;
 
 using Bloxel.Engine.Async;
 using Bloxel.Engine.DataStructures;
@@ -128,9 +131,79 @@ namespace Bloxel.Engine.UnitTests
             Console.ReadKey();
         }
 
+        static void TestSchmitzVertexFromHermiteData()
+        {
+            while (true)
+            {
+                HermiteData hermite = new HermiteData(new List<Microsoft.Xna.Framework.Vector3>(), new List<Microsoft.Xna.Framework.Vector3>());
+
+                Console.WriteLine("Enter position 1:");
+                string pos1str = Console.ReadLine();
+                Console.WriteLine("Enter normal 1:");
+                string normal1str = Console.ReadLine();
+                Console.WriteLine("Enter position 2:");
+                string pos2str = Console.ReadLine();
+                Console.WriteLine("Enter normal 2:");
+                string normal2str = Console.ReadLine();
+
+                string[] pos1parts = pos1str.Split(',');
+                string[] normal1parts = normal1str.Split(',');
+                string[] pos2parts = pos2str.Split(',');
+                string[] normal2parts = normal2str.Split(',');
+
+                Vector3 pos1 = new Vector3(Single.Parse(pos1parts[0].Trim()), Single.Parse(pos1parts[1].Trim()), Single.Parse(pos1parts[2].Trim()));
+                Vector3 normal1 = new Vector3(Single.Parse(normal1parts[0].Trim()), Single.Parse(normal1parts[1].Trim()), Single.Parse(normal1parts[2].Trim()));
+                Vector3 pos2 = new Vector3(Single.Parse(pos2parts[0].Trim()), Single.Parse(pos2parts[1].Trim()), Single.Parse(pos2parts[2].Trim()));
+                Vector3 normal2 = new Vector3(Single.Parse(normal2parts[0].Trim()), Single.Parse(normal2parts[1].Trim()), Single.Parse(normal2parts[2].Trim()));
+                normal1.Normalize();
+                normal2.Normalize();
+
+                Console.WriteLine("Position 1: {0}", pos1);
+                Console.WriteLine("Normal 1: {0}", normal1);
+                Console.WriteLine("Position 2: {0}", pos2);
+                Console.WriteLine("Normal 2: {0}", normal2);
+
+                hermite.Add(pos1, normal1);
+                hermite.Add(pos2, normal2);
+
+                Stopwatch sw = new Stopwatch();
+
+                sw.Start();
+                Vector3 pos = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.001f, 25);
+                sw.Stop();
+
+                Console.WriteLine("Out: {0}", pos);
+                Console.WriteLine("Took {0}ms", sw.ElapsedMilliseconds);
+            }
+        }
+
+        static void TestEdges()
+        {
+            while (true)
+            {
+                Console.WriteLine("Enter position 1:");
+                string pos1str = Console.ReadLine();
+                Console.WriteLine("Enter position 2:");
+                string pos2str = Console.ReadLine();
+
+                string[] pos1parts = pos1str.Split(',');
+                string[] pos2parts = pos2str.Split(',');
+
+                Vector3I pos1 = new Vector3I(Int32.Parse(pos1parts[0].Trim()), Int32.Parse(pos1parts[1].Trim()), Int32.Parse(pos1parts[2].Trim()));
+                Vector3I pos2 = new Vector3I(Int32.Parse(pos2parts[0].Trim()), Int32.Parse(pos2parts[1].Trim()), Int32.Parse(pos2parts[2].Trim()));
+
+                Edge e = new Edge(pos1, pos2);
+
+                Vector3I[] surrounding = e.GetCubePositions();
+
+                for (int i = 0; i < surrounding.Length; i++)
+                    Console.WriteLine(surrounding[i]);
+            }
+        }
+
         public static void Main(String[] args)
         {
-            TestSimplexNoise();
+            TestEdges();
         }
     }
 }

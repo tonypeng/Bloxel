@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - QEFVertex.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -24,44 +24,34 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
+
 namespace Bloxel.Engine.DataStructures
 {
-    /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
-    /// </summary>
-    public struct Density
+    public struct CubeInfo
     {
-        private short _density;
+        private Vector3 _vertexPos;
+        private ShortBitfield _edgeChanges;
 
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
+        public CubeInfo(Vector3 pos, params int[] edgeChanges)
         {
-            _density = density;
+            _vertexPos = pos;
+
+            _edgeChanges = new ShortBitfield(0);
+
+            for (int i = 0; i < edgeChanges.Length; i++)
+            {
+                _edgeChanges.Set(edgeChanges[i], 1, 1);
+            }
         }
 
-        public void Set(float f)
-        {
-            _density = (byte)(f * 32767f);
-        }
-
-        public float ToSingle()
-        {
-            return _density / 32767f;
-        }
-
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
-        }
+        public Vector3 VertexPosition { get { return _vertexPos; } set { _vertexPos = value; } }
+        public ShortBitfield EdgeChanges { get { return _edgeChanges; } }
     }
 }

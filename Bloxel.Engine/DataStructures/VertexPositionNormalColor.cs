@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - VertexPositionColorNormal.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -30,38 +30,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+
 namespace Bloxel.Engine.DataStructures
 {
-    /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
-    /// </summary>
-    public struct Density
+    public struct VertexPositionNormalColor : IVertexType
     {
-        private short _density;
+        public Vector3 Position;
+        public Vector3 Normal;
+        public Color Color;
 
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
+        public VertexPositionNormalColor(Vector3 position, Vector3 normal, Color color)
         {
-            _density = density;
+            this.Position = position;
+            this.Normal = normal;
+            this.Color = color;
         }
 
-        public void Set(float f)
-        {
-            _density = (byte)(f * 32767f);
-        }
+        public readonly static VertexDeclaration VertexDeclaration = new VertexDeclaration
+        (
+            new VertexElement(sizeof(float) * 0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+            new VertexElement(sizeof(float) * 3, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
+            new VertexElement(sizeof(float) * 6, VertexElementFormat.Color, VertexElementUsage.Color, 0)
+        );
 
-        public float ToSingle()
+        VertexDeclaration IVertexType.VertexDeclaration
         {
-            return _density / 32767f;
-        }
-
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
+            get { return VertexPositionNormalColor.VertexDeclaration; }
         }
     }
 }

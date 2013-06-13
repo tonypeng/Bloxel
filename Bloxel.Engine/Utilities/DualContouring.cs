@@ -73,6 +73,10 @@ namespace Bloxel.Engine.Utilities
             List<Vector3> grads = hermite.GradientVectors;
             int pointsCount = xPoints.Count;
 
+            // take care of this special case
+            if (pointsCount == 0)
+                return Vector3.Zero;
+
             // The two lists should be synchronized, or we have an isssue...
             Contract.Assert(xPoints.Count == grads.Count);
 
@@ -108,6 +112,30 @@ namespace Bloxel.Engine.Utilities
             }
 
             return c; // return the approximated position
+        }
+
+        public static Vector3 InterpolateIntersectionPoint(float isolevel, Vector3 p1, Vector3 p2, float value1, float value2)
+        {
+            float diff1 = Math.Abs(value1 - isolevel);
+            float diff2 = Math.Abs(value2 - isolevel);
+            float diff12 = Math.Abs(value2 - value1);
+
+            if (diff1 < 0.001f)
+                return p1;
+            if (diff2 < 0.001f)
+                return p2;
+            if (diff12 < 0.001f)
+                return p1;
+
+            Vector3 xPoint = Vector3.Zero;
+            float k = (isolevel - value1) / (value2 - value1);
+
+            // basic linear interpolation
+            xPoint.X = p1.X + k * (p2.X - p1.X);
+            xPoint.Y = p1.Y + k * (p2.Y - p1.Y);
+            xPoint.Z = p1.Z + k * (p2.Z - p1.Z);
+
+            return xPoint;
         }
     }
 }

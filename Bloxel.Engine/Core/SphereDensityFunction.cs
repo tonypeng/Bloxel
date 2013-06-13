@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - SphereDensityFunction.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -30,38 +30,43 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+using Microsoft.Xna.Framework;
+
+namespace Bloxel.Engine.Core
 {
-    /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
-    /// </summary>
-    public struct Density
+    public class SphereDensityFunction : IDensityFunction
     {
-        private short _density;
+        private Vector3 _center;
+        private float _radius;
 
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
+        public SphereDensityFunction(Vector3 center, float radius)
         {
-            _density = density;
+            _center = center;
+            _radius = radius;
         }
 
-        public void Set(float f)
+        public float f(float x, float y, float z)
         {
-            _density = (byte)(f * 32767f);
+            // implicit function of a sphere:
+            // 0 = (x-a)^2 + (y-b)^2 + (z-c)^2 - r^2
+
+            x -= _center.X;
+            y -= _center.Y;
+            z -= _center.Z;
+
+            return x * x + y * y + z * z - _radius * _radius;
         }
 
-        public float ToSingle()
+        public Vector3 df(float x, float y, float z)
         {
-            return _density / 32767f;
-        }
+            x -= _center.X;
+            y -= _center.Y;
+            z -= _center.Z;
 
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
+            Vector3 v3 = new Vector3(x, y, z);
+            v3.Normalize();
+
+            return v3;
         }
     }
 }
