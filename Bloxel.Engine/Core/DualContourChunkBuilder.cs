@@ -138,74 +138,12 @@ namespace Bloxel.Engine.Core
         //         \||========================
         //                      4
 
-        private Vector3I[][] _neighborTable = new Vector3I[][]
-        {
-            // side 0
-            new Vector3I[]
-            {
-                new Vector3I(0,0,-1), new Vector3I(0, -1, -1), new Vector3I(0, -1, 0)
-            },
-            // side 1
-            new Vector3I[]
-            {
-                new Vector3I(1, 0, 0), new Vector3I(1, 0, -1), new Vector3I(0, 0, -1)
-            },
-            // side 2
-            new Vector3I[]
-            {
-                new Vector3I(0, 0, -1), new Vector3I(0, 1, -1), new Vector3I(0, 1, 0)
-            },
-            // side 3
-            new Vector3I[]
-            {
-                new Vector3I(-1, 0, 0), new Vector3I(-1, -1, 0), new Vector3I(0, 0, -1)
-            },
-            // side 4
-            new Vector3I[]
-            {
-                new Vector3I(0, 0, 1), new Vector3I(0, -1, 1), new Vector3I(0, -1, 0)
-            },
-            // side 5
-            new Vector3I[]
-            {
-                new Vector3I(0, 0, 1), new Vector3I(0, 1, 1), new Vector3I(1, 0, 0)
-            },
-            // side 6
-            new Vector3I[]
-            {
-                new Vector3I(0, 0, 1), new Vector3I(0, 1, 1), new Vector3I(0, 1, 0)
-            },
-            // side 7
-            new Vector3I[]
-            {
-                new Vector3I(0, 0, 1), new Vector3I(-1, 0, 1), new Vector3I(-1, 0, 0)
-            },
-            // side 8
-            new Vector3I[]
-            {
-                new Vector3I(0, -1, 0), new Vector3I(-1, -1, 0), new Vector3I(-1, 0, 0)
-            },
-            // side 9
-            new Vector3I[]
-            {
-                new Vector3I(0, -1, 0), new Vector3I(1, -1, 0), new Vector3I(1, 0, 0)
-            },
-            // side 10
-            new Vector3I[]
-            {
-                new Vector3I(1, 0, 0), new Vector3I(1, 1, 0), new Vector3I(0, 1, 0)
-            },
-            // side 11
-            new Vector3I[]
-            {
-                new Vector3I(0, 1, 0), new Vector3I(-1, 1, 0), new Vector3I(-1, 0, 0)
-            }
-        };
-
         private GraphicsDevice _device;
 
         private Dictionary<Vector3I, CubeInfo> _positionToQEF;
+        // TODO: chunk independent vertex data might be thread issues later
         private List<VertexPositionColor> _vertices;
+        private List<VertexPositionColor> _normalVertices;
         private Dictionary<Vector3I, short> _positionToIndex;
         private List<short> _indices;
         private List<Edge> _intersectingEdges;
@@ -227,6 +165,7 @@ namespace Bloxel.Engine.Core
             _positionToIndex = new Dictionary<Vector3I, short>();
             _intersectingEdges = new List<Edge>();
             _intersectingEdgesCheck = new HashSet<Edge>();
+            _normalVertices = new List<VertexPositionColor>();
 
             _densityFunction = densityFunction;
 
@@ -282,7 +221,36 @@ namespace Bloxel.Engine.Core
         {
             foreach (Edge e in _intersectingEdges)
             {
+                Direction d = e.FaceDirection;
+
+                short[] indices = new short[6];
+
                 Vector3I[] cubes = e.GetCubePositions();
+
+                // TODO: possible degenerate triangles (0 area)
+                switch (d)
+                {
+                    case Direction.XDecreasing:
+                    case Direction.ZDecreasing:
+                    case Direction.YIncreasing:
+                        indices[0] = _positionToIndex[cubes[0]];
+                        indices[1] = _positionToIndex[cubes[1]];
+                        indices[2] = _positionToIndex[cubes[3]];
+                        indices[3] = _positionToIndex[cubes[0]];
+                        indices[4] = _positionToIndex[cubes[3]];
+                        indices[5] = _positionToIndex[cubes[2]];
+                        break;
+                    case Direction.XIncreasing:
+                    case Direction.ZIncreasing:
+                    case Direction.YDecreasing:
+                        indices[0] = _positionToIndex[cubes[0]];
+                        indices[1] = _positionToIndex[cubes[3]];
+                        indices[2] = _positionToIndex[cubes[1]];
+                        indices[3] = _positionToIndex[cubes[0]];
+                        indices[4] = _positionToIndex[cubes[2]];
+                        indices[5] = _positionToIndex[cubes[3]];
+                        break;
+                }
 
                 short index0 = _positionToIndex[cubes[0]];
                 short index1 = _positionToIndex[cubes[1]];
@@ -290,322 +258,42 @@ namespace Bloxel.Engine.Core
                 short index3 = _positionToIndex[cubes[3]];
 
                 // triangle 1
-                
+                Vector3 point0 = _vertices[indices[0]].Position;
+                Vector3 point1 = _vertices[indices[1]].Position;
+                Vector3 point2 = _vertices[indices[2]].Position;
+
+                Vector3 v01 = point1 - point0;
+                Vector3 v12 = point2 - point1;
+
+                Vector3 normal1 = Vector3.Cross(v12, v01);
+                normal1.Normalize();
+
+                if (Single.IsNaN(normal1.X) || Single.IsNaN(normal1.Y) || Single.IsNaN(normal1.Z))
+                    normal1 = Vector3.Zero; // TODO: this is a hack; think it through later
 
                 // triangle 2
+                Vector3 point3 = _vertices[indices[3]].Position;
+                Vector3 point4 = _vertices[indices[4]].Position;
+                Vector3 point5 = _vertices[indices[5]].Position;
+
+                Vector3 v34 = point4 - point3;
+                Vector3 v45 = point5 - point4;
+
+                Vector3 normal2 = Vector3.Cross(v45, v34);
+                normal2.Normalize();
+
+                if (Single.IsNaN(normal2.X) || Single.IsNaN(normal2.Y) || Single.IsNaN(normal2.Z))
+                    normal2 = Vector3.Zero; // TODO: this is a hack; think it through later
+
+                _normalVertices.Add(new VertexPositionColor(point1, Color.White));
+                _normalVertices.Add(new VertexPositionColor(point1 + normal1, Color.White));
+                _normalVertices.Add(new VertexPositionColor(point2, Color.Black));
+                _normalVertices.Add(new VertexPositionColor(point2 + normal2, Color.Black));
 
                 _triangles += 2;
 
-                AddIndices(index0, index1, index3, index0, index2, index3);
+                AddIndices(indices);
             }
-
-            /*
-            foreach (Vector3I key in _positionToQEF.Keys.ToList())
-            {
-                Console.Write(key);
-
-                if (key.Equals(new Vector3I(5, 9, 7)))
-                    Console.Write("");
-
-                if (_positionToQEF[key].VertexPosition.X < 0 && _positionToQEF[key].VertexPosition.Y < 0 && _positionToQEF[key].VertexPosition.Z < 0)
-                {
-                    Console.WriteLine("!!!");
-                    continue; // already processed
-                }
-
-                Console.WriteLine();
-
-                Vector3I XNegativeYZ = key + Vector3I.XNegative;
-                Vector3I XPositiveYZ = key + Vector3I.XPositive;
-                Vector3I XYNegativeZ = key + Vector3I.YNegative;
-                Vector3I XYPositiveZ = key + Vector3I.YPositive;
-                Vector3I XYZNegative = key + Vector3I.ZNegative;
-                Vector3I XYZPositive = key + Vector3I.ZPositive;
-
-                Vector3I XNegativeYNegativeZ = key + Vector3I.XNegative + Vector3I.YNegative;
-                Vector3I XNegativeYPositiveZ = key + Vector3I.XNegative + Vector3I.YPositive;
-                Vector3I XPositiveYNegativeZ = key + Vector3I.XPositive + Vector3I.YNegative;
-                Vector3I XPositiveYPositiveZ = key + Vector3I.XPositive + Vector3I.YPositive;
-
-                Vector3I XYNegativeZNegative = key + Vector3I.YNegative + Vector3I.ZNegative;
-                Vector3I XYNegativeZPositive = key + Vector3I.YNegative + Vector3I.ZPositive;
-                Vector3I XYPositiveZNegative = key + Vector3I.YPositive + Vector3I.ZNegative;
-                Vector3I XYPositiveZPositive = key + Vector3I.YPositive + Vector3I.ZPositive;
-
-                Vector3I XNegativeYZNegative = key + Vector3I.XNegative + Vector3I.ZNegative;
-                Vector3I XNegativeYZPositive = key + Vector3I.XNegative + Vector3I.ZPositive;
-                Vector3I XPositiveYZNegative = key + Vector3I.XPositive + Vector3I.ZNegative;
-                Vector3I XPositiveYZPositive = key + Vector3I.XPositive + Vector3I.ZPositive;
-
-                bool XNegativeYZBool = _positionToQEF.ContainsKey(XNegativeYZ);
-                bool XPositiveYZBool = _positionToQEF.ContainsKey(XPositiveYZ);
-                bool XYNegativeZBool = _positionToQEF.ContainsKey(XYNegativeZ);
-                bool XYPositiveZBool = _positionToQEF.ContainsKey(XYPositiveZ);
-                bool XYZNegativeBool = _positionToQEF.ContainsKey(XYZNegative);
-                bool XYZPositiveBool = _positionToQEF.ContainsKey(XYZPositive);
-
-                bool XNegativeYNegativeZBool = _positionToQEF.ContainsKey(XNegativeYNegativeZ);
-                bool XNegativeYPositiveZBool = _positionToQEF.ContainsKey(XNegativeYPositiveZ);
-                bool XPositiveYNegativeZBool = _positionToQEF.ContainsKey(XPositiveYNegativeZ);
-                bool XPositiveYPositiveZBool = _positionToQEF.ContainsKey(XPositiveYPositiveZ);
-
-                bool XYNegativeZNegativeBool = _positionToQEF.ContainsKey(XYNegativeZNegative);
-                bool XYNegativeZPositiveBool = _positionToQEF.ContainsKey(XYNegativeZPositive);
-                bool XYPositiveZNegativeBool = _positionToQEF.ContainsKey(XYPositiveZNegative);
-                bool XYPositiveZPositiveBool = _positionToQEF.ContainsKey(XYPositiveZPositive);
-
-                bool XNegativeYZNegativeBool = _positionToQEF.ContainsKey(XNegativeYZNegative);
-                bool XNegativeYZPositiveBool = _positionToQEF.ContainsKey(XNegativeYZPositive);
-                bool XPositiveYZNegativeBool = _positionToQEF.ContainsKey(XPositiveYZNegative);
-                bool XPositiveYZPositiveBool = _positionToQEF.ContainsKey(XPositiveYZPositive);
-
-                Color col = new Color(rand.Next(256), rand.Next(256), rand.Next(256));
-
-                short XYZIndex = _positionToIndex[key];
-
-                List<Vector3I> usedPositions = new List<Vector3I>();
-
-                usedPositions.Add(key);
-
-                // x-y plane
-                if (XNegativeYZBool)
-                {
-                    if (XNegativeYPositiveZBool && XYPositiveZBool)
-                    {
-                        // create quad
-                        Vector3 XNegativeYZQEF = _positionToQEF[XNegativeYZ].VertexPosition;
-                        Vector3 XNegativeYPositiveZQEF = _positionToQEF[XNegativeYPositiveZ].VertexPosition;
-                        Vector3 XYPositiveZQEF = _positionToQEF[XYPositiveZ].VertexPosition;
-
-                        short XNegativeYZIndex = _positionToIndex[XNegativeYZ];
-                        short XNegativeYPositiveZIndex = _positionToIndex[XNegativeYPositiveZ];
-                        short XYPositiveZIndex = _positionToIndex[XYPositiveZ];
-
-                        AddIndices(XYZIndex, XNegativeYZIndex, XNegativeYPositiveZIndex, XYZIndex, XNegativeYPositiveZIndex, XYPositiveZIndex);
-
-                        usedPositions.Add(XNegativeYPositiveZ);
-                        usedPositions.Add(XYPositiveZ);
-                    }
-
-                    if (XNegativeYNegativeZBool && XYNegativeZBool)
-                    {
-                        // create quad
-                        Vector3 XNegativeYZQEF = _positionToQEF[XNegativeYZ].VertexPosition;
-                        Vector3 XNegativeYNegativeZQEF = _positionToQEF[XNegativeYNegativeZ].VertexPosition;
-                        Vector3 XYNegativeZQEF = _positionToQEF[XYNegativeZ].VertexPosition;
-
-                        short XNegativeYZIndex = _positionToIndex[XNegativeYZ];
-                        short XNegativeYNegativeZIndex = _positionToIndex[XNegativeYNegativeZ];
-                        short XYNegativeZIndex = _positionToIndex[XYNegativeZ];
-
-                        AddIndices(XYZIndex, XNegativeYNegativeZIndex, XNegativeYZIndex, XYZIndex, XYNegativeZIndex, XNegativeYNegativeZIndex);
-
-                        usedPositions.Add(XNegativeYNegativeZ);
-                        usedPositions.Add(XYNegativeZ);
-                    }
-
-                    usedPositions.Add(XNegativeYZ);
-                }
-
-                if (XPositiveYZBool)
-                {
-                    if (XPositiveYPositiveZBool && XYPositiveZBool)
-                    {
-                        // create quad
-                        Vector3 XPositiveYZQEF = _positionToQEF[XPositiveYZ].VertexPosition;
-                        Vector3 XPositiveYPositiveZQEF = _positionToQEF[XPositiveYPositiveZ].VertexPosition;
-                        Vector3 XYPositiveZQEF = _positionToQEF[XYPositiveZ].VertexPosition;
-
-                        short XPositiveYZIndex = _positionToIndex[XPositiveYZ];
-                        short XPositiveYPositiveZIndex = _positionToIndex[XPositiveYPositiveZ];
-                        short XYPositiveZIndex = _positionToIndex[XYPositiveZ];
-
-                        AddIndices(XYZIndex, XPositiveYPositiveZIndex, XPositiveYZIndex, XYZIndex, XYPositiveZIndex, XPositiveYPositiveZIndex);
-
-                        usedPositions.Add(XPositiveYPositiveZ);
-                        usedPositions.Add(XYPositiveZ);
-                    }
-
-                    if (XPositiveYNegativeZBool && XYNegativeZBool)
-                    {
-                        // create quad
-                        Vector3 XPositiveYZQEF = _positionToQEF[XPositiveYZ].VertexPosition;
-                        Vector3 XPositiveYNegativeZQEF = _positionToQEF[XPositiveYNegativeZ].VertexPosition;
-                        Vector3 XYNegativeZQEF = _positionToQEF[XYNegativeZ].VertexPosition;
-
-                        short XPositiveYZIndex = _positionToIndex[XPositiveYZ];
-                        short XPositiveYNegativeZIndex = _positionToIndex[XPositiveYNegativeZ];
-                        short XYNegativeZIndex = _positionToIndex[XYNegativeZ];
-
-                        AddIndices(XYZIndex, XPositiveYZIndex, XPositiveYNegativeZIndex, XYZIndex, XPositiveYNegativeZIndex, XYNegativeZIndex);
-
-                        usedPositions.Add(XPositiveYNegativeZ);
-                        usedPositions.Add(XYNegativeZ);
-                    }
-
-                    usedPositions.Add(XPositiveYZ);
-                }
-
-                if (XYZNegativeBool)
-                {
-                    // y-z plane
-                    if (XYPositiveZNegativeBool && XYPositiveZBool)
-                    {
-                        // create quad
-                        Vector3 XYZNegativeQEF = _positionToQEF[XYZNegative].VertexPosition;
-                        Vector3 XYPositiveZNegativeQEF = _positionToQEF[XYPositiveZNegative].VertexPosition;
-                        Vector3 XYPositiveZQEF = _positionToQEF[XYPositiveZ].VertexPosition;
-
-                        short XYZNegativeIndex = _positionToIndex[XYZNegative];
-                        short XYPositiveZNegativeIndex = _positionToIndex[XYPositiveZNegative];
-                        short XYPositiveZIndex = _positionToIndex[XYPositiveZ];
-
-                        AddIndices(XYZIndex, XYZNegativeIndex, XYPositiveZNegativeIndex, XYZIndex, XYPositiveZNegativeIndex, XYPositiveZIndex);
-
-                        usedPositions.Add(XYPositiveZNegative);
-                        usedPositions.Add(XYPositiveZ);
-                    }
-
-                    if (XYNegativeZNegativeBool && XYNegativeZBool)
-                    {
-                        // create quad
-                        Vector3 XYZNegativeQEF = _positionToQEF[XYZNegative].VertexPosition;
-                        Vector3 XYNegativeZNegativeQEF = _positionToQEF[XYNegativeZNegative].VertexPosition;
-                        Vector3 XYNegativeZQEF = _positionToQEF[XYNegativeZ].VertexPosition;
-
-                        short XYZNegativeIndex = _positionToIndex[XYZNegative];
-                        short XYNegativeZNegativeIndex = _positionToIndex[XYNegativeZNegative];
-                        short XYNegativeZIndex = _positionToIndex[XYNegativeZ];
-
-                        AddIndices(XYZIndex, XYNegativeZNegativeIndex, XYZNegativeIndex, XYZIndex, XYNegativeZIndex, XYNegativeZNegativeIndex);
-
-                        usedPositions.Add(XYNegativeZNegative);
-                        usedPositions.Add(XYNegativeZ);
-                    }
-
-                    // x-z plane
-                    if (XNegativeYZNegativeBool && XNegativeYZBool)
-                    {
-                        // create quad
-                        Vector3 XYZNegativeQEF = _positionToQEF[XYZNegative].VertexPosition;
-                        Vector3 XNegativeYZNegativeQEF = _positionToQEF[XNegativeYZNegative].VertexPosition;
-                        Vector3 XNegativeYZQEF = _positionToQEF[XNegativeYZ].VertexPosition;
-
-                        short XYZNegativeIndex = _positionToIndex[XYZNegative];
-                        short XNegativeYZNegativeIndex = _positionToIndex[XNegativeYZNegative];
-                        short XNegativeYZIndex = _positionToIndex[XNegativeYZ];
-
-                        AddIndices(XYZIndex, XNegativeYZIndex, XNegativeYZNegativeIndex, XYZIndex, XNegativeYZNegativeIndex, XYZNegativeIndex);
-
-                        usedPositions.Add(XNegativeYZNegative);
-                        usedPositions.Add(XNegativeYZ);
-                    }
-
-                    if (XPositiveYZNegativeBool && XPositiveYZBool)
-                    {
-                        // create quad
-                        Vector3 XYZNegativeQEF = _positionToQEF[XYZNegative].VertexPosition;
-                        Vector3 XPositiveYZNegativeQEF = _positionToQEF[XPositiveYZNegative].VertexPosition;
-                        Vector3 XPositiveYZQEF = _positionToQEF[XPositiveYZ].VertexPosition;
-
-                        short XYZNegativeIndex = _positionToIndex[XYZNegative];
-                        short XPositiveYZNegativeIndex = _positionToIndex[XPositiveYZNegative];
-                        short XPositiveYZIndex = _positionToIndex[XPositiveYZ];
-
-                        AddIndices(XYZIndex, XYZNegativeIndex, XPositiveYZNegativeIndex, XYZIndex, XPositiveYZNegativeIndex, XPositiveYZIndex);
-
-                        usedPositions.Add(XPositiveYZNegative);
-                        usedPositions.Add(XPositiveYZ);
-                    }
-
-                    usedPositions.Add(XYZNegative);
-                }
-
-                if (XYZPositiveBool)
-                {
-                    // y-z plane
-                    if (XYPositiveZPositiveBool && XYPositiveZBool)
-                    {
-                        // create quad
-                        Vector3 XYZPositiveQEF = _positionToQEF[XYZPositive].VertexPosition;
-                        Vector3 XYPositiveZPositiveQEF = _positionToQEF[XYPositiveZPositive].VertexPosition;
-                        Vector3 XYPositiveZQEF = _positionToQEF[XYPositiveZ].VertexPosition;
-
-                        short XYZPositiveIndex = _positionToIndex[XYZPositive];
-                        short XYPositiveZPositiveIndex = _positionToIndex[XYPositiveZPositive];
-                        short XYPositiveZIndex = _positionToIndex[XYPositiveZ];
-
-                        AddIndices(XYZIndex, XYPositiveZPositiveIndex, XYZPositiveIndex, XYZIndex, XYPositiveZIndex, XYPositiveZPositiveIndex);
-
-                        usedPositions.Add(XYPositiveZPositive);
-                        usedPositions.Add(XYPositiveZ);
-                    }
-
-                    if (XYNegativeZPositiveBool && XYNegativeZBool)
-                    {
-                        // create quad
-                        Vector3 XYZPositiveQEF = _positionToQEF[XYZPositive].VertexPosition;
-                        Vector3 XYNegativeZPositiveQEF = _positionToQEF[XYNegativeZPositive].VertexPosition;
-                        Vector3 XYNegativeZQEF = _positionToQEF[XYNegativeZ].VertexPosition;
-
-                        short XYZPositiveIndex = _positionToIndex[XYZPositive];
-                        short XYNegativeZPositiveIndex = _positionToIndex[XYNegativeZPositive];
-                        short XYNegativeZIndex = _positionToIndex[XYNegativeZ];
-
-                        AddIndices(XYZIndex, XYZPositiveIndex, XYNegativeZPositiveIndex, XYZIndex, XYNegativeZPositiveIndex, XYNegativeZIndex);
-
-                        usedPositions.Add(XYNegativeZPositive);
-                        usedPositions.Add(XYNegativeZ);
-                    }
-
-                    // x-z plane
-                    if (XNegativeYZPositiveBool && XNegativeYZBool)
-                    {
-                        // create quad
-                        Vector3 XYZPositiveQEF = _positionToQEF[XYZPositive].VertexPosition;
-                        Vector3 XNegativeYZPositiveQEF = _positionToQEF[XNegativeYZPositive].VertexPosition;
-                        Vector3 XNegativeYZQEF = _positionToQEF[XNegativeYZ].VertexPosition;
-
-                        short XYZPositiveIndex = _positionToIndex[XYZPositive];
-                        short XNegativeYZPositiveIndex = _positionToIndex[XNegativeYZPositive];
-                        short XNegativeYZIndex = _positionToIndex[XNegativeYZ];
-
-                        AddIndices(XYZIndex, XNegativeYZPositiveIndex, XNegativeYZIndex, XYZIndex, XYZPositiveIndex, XNegativeYZPositiveIndex);
-
-                        usedPositions.Add(XNegativeYZPositive);
-                        usedPositions.Add(XNegativeYZ);
-                    }
-
-                    if (XPositiveYZPositiveBool && XPositiveYZBool)
-                    {
-                        // create quad
-                        Vector3 XYZPositiveQEF = _positionToQEF[XYZPositive].VertexPosition;
-                        Vector3 XPositiveYZPositiveQEF = _positionToQEF[XPositiveYZPositive].VertexPosition;
-                        Vector3 XPositiveYZQEF = _positionToQEF[XPositiveYZ].VertexPosition;
-
-                        short XYZPositiveIndex = _positionToIndex[XYZPositive];
-                        short XPositiveYZPositiveIndex = _positionToIndex[XPositiveYZPositive];
-                        short XPositiveYZIndex = _positionToIndex[XPositiveYZ];
-
-                        AddIndices(XYZIndex, XPositiveYZPositiveIndex, XYZPositiveIndex, XYZIndex, XPositiveYZIndex, XPositiveYZPositiveIndex);
-
-                        usedPositions.Add(XPositiveYZPositive);
-                        usedPositions.Add(XPositiveYZ);
-                    }
-
-                    usedPositions.Add(XYZPositive);
-                }
-
-                for (int i = 0; i < usedPositions.Count; i++)
-                {
-                    if (usedPositions[i].Equals(new Vector3I(5, 9, 7)))
-                        Console.Write("");
-                    if (usedPositions[i].Equals(new Vector3I(5, 9, 8)))
-                        Console.Write("");
-
-                    //_positionToQEF[usedPositions[i]].VertexPosition = new Vector3(-1, -1, -1); // set to negative values so that we don't process this again (prevents z-fighting)
-                }
-            }*/
         }
 
         private void ProcessBlock(Chunk c, GridPoint min, Vector3I worldPosition, Vector3I localPosition)
@@ -635,6 +323,7 @@ namespace Bloxel.Engine.Core
             if (hermite.IntersectionPoints.Count == 0)
                 return;
 
+            // investigate possible optimization by using AddRange, since it re-allocates the list only once.
             for (int i = 0; i < data.Item2.Length; i++)
             {
                 if (!_intersectingEdgesCheck.Contains(data.Item2[i]))
@@ -730,11 +419,17 @@ namespace Bloxel.Engine.Core
                 corner2.Y += corner2Offset[1];
                 corner2.Z += corner2Offset[2];
 
-                xEdges.Add(new Edge(corner1, corner2));
+                GridPoint corner1Point = lookupTable[corner1Offset[0]][corner1Offset[1]][corner1Offset[2]];
+                GridPoint corner2Point = lookupTable[corner2Offset[0]][corner2Offset[1]][corner2Offset[2]];
+
+                Vector3I delta = (corner2 - corner1) * (corner1Point.Density < _minimumSolidDensity ? -1 : 1); // negate if corner1 is less than the isovalue because we assume corner2 at first.
+                Direction dir = GetDirectionFromDelta(delta);
+
+                xEdges.Add(new Edge(corner1, corner2, dir));
 
                 Vector3 intersectionPoint = DualContouring.InterpolateIntersectionPoint(_minimumSolidDensity, corner1.ToVector3(), corner2.ToVector3(),
-                    lookupTable[corner1Offset[0]][corner1Offset[1]][corner1Offset[2]].Density,
-                    lookupTable[corner2Offset[0]][corner2Offset[1]][corner2Offset[2]].Density);
+                    corner1Point.Density,
+                    corner2Point.Density);
 
                 Vector3 normal = _densityFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
 
@@ -746,6 +441,42 @@ namespace Bloxel.Engine.Core
             return ret;
         }
 
+        private Direction GetDirectionFromDelta(Vector3I delta)
+        {
+            int dx = delta.X;
+            int dy = delta.Y;
+            int dz = delta.Z;
+
+            Contract.Assert(Math.Abs(dx + dy + dz) == 1);
+
+            if (dx == -1)
+            {
+                return Direction.XDecreasing;
+            }
+            else if (dx == 1)
+            {
+                return Direction.XIncreasing;
+            }
+            else if (dy == -1)
+            {
+                return Direction.YDecreasing;
+            }
+            else if (dy == 1)
+            {
+                return Direction.YIncreasing;
+            }
+            else if (dz == -1)
+            {
+                return Direction.ZDecreasing;
+            }
+            else if (dz == 1)
+            {
+                return Direction.ZIncreasing;
+            }
+
+            throw new Exception("Impossible!");
+        }
+
         private void BuildBuffers(Chunk c)
         {
             if (_vertices.Count <= 0 || _indices.Count <= 0)
@@ -753,9 +484,11 @@ namespace Bloxel.Engine.Core
 
             VertexPositionColor[] vertices = new VertexPositionColor[_vertices.Count];
             short[] indices = new short[_indices.Count];
+            VertexPositionColor[] normal = new VertexPositionColor[_normalVertices.Count];
 
             _vertices.CopyTo(vertices);
             _indices.CopyTo(indices);
+            _normalVertices.CopyTo(normal);
 
             lock (c.GraphicsSync)
             {
@@ -763,28 +496,28 @@ namespace Bloxel.Engine.Core
                     c.VertexBuffer.Dispose();
                 if(c.IndexBuffer != null)
                     c.IndexBuffer.Dispose();
+                if (c.NormalsVertexBuffer != null)
+                    c.NormalsVertexBuffer.Dispose();
 
                 c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), vertices.Length, BufferUsage.WriteOnly);
                 c.IndexBuffer = new DynamicIndexBuffer(_device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
+                c.NormalsVertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), normal.Length, BufferUsage.WriteOnly);
 
                 c.VertexBuffer.SetData<VertexPositionColor>(vertices);
                 c.IndexBuffer.SetData<short>(indices);
+                c.NormalsVertexBuffer.SetData<VertexPositionColor>(normal);
             }
 
             _vertices.Clear();
+            _normalVertices.Clear();
             _indices.Clear();
             _intersectingEdges.Clear();
             _intersectingEdgesCheck.Clear();
         }
 
-        private void AddIndices(short s1, short s2, short s3, short s4, short s5, short s6)
+        private void AddIndices(params short[] indices)
         {
-            _indices.Add(s1);
-            _indices.Add(s2);
-            _indices.Add(s3);
-            _indices.Add(s4);
-            _indices.Add(s5);
-            _indices.Add(s6);
+            _indices.AddRange(indices);
         }
     }
 }

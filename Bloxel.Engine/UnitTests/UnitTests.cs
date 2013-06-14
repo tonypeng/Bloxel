@@ -185,6 +185,8 @@ namespace Bloxel.Engine.UnitTests
                 string pos1str = Console.ReadLine();
                 Console.WriteLine("Enter position 2:");
                 string pos2str = Console.ReadLine();
+                Console.WriteLine("Enter face direction:");
+                string dir = Console.ReadLine();
 
                 string[] pos1parts = pos1str.Split(',');
                 string[] pos2parts = pos2str.Split(',');
@@ -192,7 +194,7 @@ namespace Bloxel.Engine.UnitTests
                 Vector3I pos1 = new Vector3I(Int32.Parse(pos1parts[0].Trim()), Int32.Parse(pos1parts[1].Trim()), Int32.Parse(pos1parts[2].Trim()));
                 Vector3I pos2 = new Vector3I(Int32.Parse(pos2parts[0].Trim()), Int32.Parse(pos2parts[1].Trim()), Int32.Parse(pos2parts[2].Trim()));
 
-                Edge e = new Edge(pos1, pos2);
+                Edge e = new Edge(pos1, pos2, (Direction)Enum.Parse(typeof(Direction), dir));
 
                 Vector3I[] surrounding = e.GetCubePositions();
 

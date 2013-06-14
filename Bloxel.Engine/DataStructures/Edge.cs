@@ -38,14 +38,23 @@ namespace Bloxel.Engine.DataStructures
         private Vector3I _point1;
         private Vector3I _point2;
 
-        public Edge(Vector3I point1, Vector3I point2)
+        private Direction _direction;
+
+        public Edge(Vector3I point1, Vector3I point2, Direction direction)
         {
             _point1 = point1;
             _point2 = point2;
+
+            _direction = direction;
         }
 
         public Vector3I Point1 { get { return _point1; } }
         public Vector3I Point2 { get { return _point2; } }
+
+        /// <summary>
+        /// Gets the direction that the face constructed from this edge should face.
+        /// </summary>
+        public Direction FaceDirection { get { return _direction; } }
 
         public bool Equals(Edge other)
         {

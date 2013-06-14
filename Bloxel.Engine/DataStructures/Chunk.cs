@@ -64,6 +64,7 @@ namespace Bloxel.Engine.DataStructures
 
         public VertexBuffer VertexBuffer { get { return _vertexBuffer; } set { _vertexBuffer = value; } }
         public IndexBuffer IndexBuffer { get { return _indexBuffer; } set { _indexBuffer = value; } }
+        public VertexBuffer NormalsVertexBuffer { get; set; }
 
         public object GraphicsSync = new object();
 

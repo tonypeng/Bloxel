@@ -71,7 +71,7 @@ namespace Playground
             Stopwatch sw = new Stopwatch();
             sw.Start();
             chunk = new Chunk(null, Vector3I.Zero, 16, 128, 16);
-            sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 5f);
+            sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 6f);
             DensityChunkGenerator dcg = new DensityChunkGenerator(sdf);
             dcg.Generate(chunk);
             sw.Stop();
@@ -176,7 +176,7 @@ namespace Playground
             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
             GraphicsDevice.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.None, FillMode = Microsoft.Xna.Framework.Graphics.FillMode.WireFrame };
             GraphicsDevice.RasterizerState = RasterizerState.CullNone;
-            //GraphicsDevice.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.CullCounterClockwiseFace };
+            GraphicsDevice.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.CullCounterClockwiseFace };
 
             basicEffect.VertexColorEnabled = true;
             basicEffect.World = Matrix.Identity;
@@ -191,6 +191,9 @@ namespace Playground
                 GraphicsDevice.Indices = chunk.IndexBuffer;
 
                 GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, chunk.VertexBuffer.VertexCount, 0, chunk.IndexBuffer.IndexCount / 3);
+
+                GraphicsDevice.SetVertexBuffer(chunk.NormalsVertexBuffer);
+                GraphicsDevice.DrawPrimitives(PrimitiveType.LineList, 0, chunk.NormalsVertexBuffer.VertexCount / 2);
             }
 
             for (int x = 5; x < 11; x++)

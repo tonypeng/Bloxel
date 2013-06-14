@@ -54,7 +54,7 @@ namespace Bloxel.Engine.Core
             y -= _center.Y;
             z -= _center.Z;
 
-            return x * x + y * y + z * z - _radius * _radius;
+            return -1 * (x * x + y * y + z * z - _radius * _radius); // multiply by -1 because we want outside to be negative
         }
 
         public Vector3 df(float x, float y, float z)

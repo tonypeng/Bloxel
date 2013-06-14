@@ -85,7 +85,7 @@ namespace Bloxel.Engine.DataStructures
 
         public override int GetHashCode()
         {
-            // TO-DO: check me
+            // TODO: check me
             int hash = 41;
 
             unchecked

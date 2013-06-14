@@ -36,7 +36,7 @@ namespace Bloxel.Engine.Cameras
 {
     public abstract class Camera
     {
-        /* to-do: make properties for all of these... */
+        /* TODO: make properties for all of these... */
         protected Vector3 _upVector;
 
         protected Vector3 _position;
@@ -78,7 +78,7 @@ namespace Bloxel.Engine.Cameras
         {
             _yaw = _pitch = _roll = 0.0f;
 
-            // TO-DO: change to properties
+            // TODO: change to properties
             _rotateSpeed = 0.005f;
 
             _upVector = up;
