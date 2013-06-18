@@ -71,6 +71,7 @@
     <Compile Include="Core\BloxelHost.cs" />
     <Compile Include="Core\ColoredChunkRenderer.cs" />
     <Compile Include="Core\DualContourChunkBuilder.cs" />
+    <Compile Include="Core\DualContourColoredChunkSystem.cs" />
     <Compile Include="Core\IChunkGenerator.cs" />
     <Compile Include="Core\IDensityFunction.cs" />
     <Compile Include="Core\EngineConfiguration.cs" />
@@ -79,6 +80,10 @@
     <Compile Include="Core\IChunkBuilder.cs" />
     <Compile Include="Core\IChunkRenderer.cs" />
     <Compile Include="Core\IChunkSystem.cs" />
+    <Compile Include="Core\ITerrainGradientFunction.cs" />
+    <Compile Include="Core\IslandChunkGenerator.cs" />
+    <Compile Include="Utilities\NoiseGenerator.cs" />
+    <Compile Include="Core\SimplexDensityFunction.cs" />
     <Compile Include="Core\SphereDensityFunction.cs" />
     <Compile Include="Core\StaticThreadedChunkManager.cs" />
     <Compile Include="Core\World.cs" />
@@ -107,7 +112,7 @@
     <Compile Include="Utilities\ArrayUtil.cs" />
     <Compile Include="Utilities\ChunkUtil.cs" />
     <Compile Include="Utilities\DualContouring.cs" />
-    <Compile Include="Utilities\SimplexNoise.cs" />
+    <Compile Include="Utilities\SimplexNoiseGenerator.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

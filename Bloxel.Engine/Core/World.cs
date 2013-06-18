@@ -30,15 +30,59 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Bloxel.Engine.DataStructures;
+using Bloxel.Engine.Utilities;
+
 namespace Bloxel.Engine.Core
 {
     public class World
     {
+        private EngineConfiguration _config;
         private IChunkManager _chunkManager;
 
-        public World(IChunkManager chunkManager)
+        public EngineConfiguration EngineConfiguration { get { return _config; } }
+
+        public IChunkManager ChunkManager
         {
-            _chunkManager = chunkManager;
+            get { return _chunkManager; }
+            set { _chunkManager = value; }
+        }
+
+        public World(EngineConfiguration config)
+        {
+            _config = config;
+        }
+
+        public GridPoint PointAt(int x, int y, int z)
+        {
+            int cx = x / _config.ChunkWidth;
+            int cy = y / _config.ChunkHeight;
+            int cz = z / _config.ChunkLength;
+
+            int lx = x % _config.ChunkWidth;
+            int ly = y % _config.ChunkHeight;
+            int lz = z % _config.ChunkLength;
+
+            Chunk c = _chunkManager[cx, cy, cz];
+
+            if (c == null)
+                return GridPoint.Empty;
+
+            return c.Points[ArrayUtil.Convert3DTo1D(lx, ly, lz, _config.ChunkLength, _config.ChunkHeight)];
+        }
+
+        public Chunk ChunkAt(float x, float y, float z)
+        {
+            return ChunkAt((int)x, (int)y, (int)z);
+        }
+
+        public Chunk ChunkAt(int x, int y, int z)
+        {
+            int cx = x / _config.ChunkWidth;
+            int cy = y / _config.ChunkHeight;
+            int cz = z / _config.ChunkLength;
+
+            return _chunkManager[cx, cy, cz];
         }
     }
 }

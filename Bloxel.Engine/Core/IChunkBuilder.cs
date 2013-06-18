@@ -36,6 +36,9 @@ namespace Bloxel.Engine.Core
 {
     public interface IChunkBuilder
     {
+        bool RequiresPostProcess { get; }
+
         void Build(Chunk c);
+        void PostProcess(Chunk c);
     }
 }

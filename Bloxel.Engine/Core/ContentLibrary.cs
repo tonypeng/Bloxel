@@ -30,10 +30,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+
 namespace Bloxel.Engine.Core
 {
     public class ContentLibrary
     {
+        // effects
+        public BasicEffect BasicEffect;
+        public Effect TerrainColorEffect;
 
+        public void Load(GraphicsDevice device, ContentManager Content)
+        {
+            BasicEffect = new BasicEffect(device);
+
+            TerrainColorEffect = Content.Load<Effect>("Effects/TerrainColor");
+        }
     }
 }

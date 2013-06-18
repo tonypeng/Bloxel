@@ -34,7 +34,7 @@ using Microsoft.Xna.Framework;
 
 namespace Bloxel.Engine.Core
 {
-    public class SphereDensityFunction : IDensityFunction
+    public class SphereDensityFunction : IDensityFunction, ITerrainGradientFunction
     {
         private Vector3 _center;
         private float _radius;

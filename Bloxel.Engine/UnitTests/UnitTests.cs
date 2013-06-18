@@ -113,6 +113,8 @@ namespace Bloxel.Engine.UnitTests
         {
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
+            SimplexNoiseGenerator sng = new SimplexNoiseGenerator(Environment.TickCount);
+
             sw.Start();
             for (int x = 0; x < 16; x++)
             {
@@ -120,7 +122,7 @@ namespace Bloxel.Engine.UnitTests
                 {
                     for (int z = 0; z < 16; z++)
                     {
-                        SimplexNoise.GetNoise(x, y, z);
+                        sng.noise3d(x, y, z);
                     }
                 }
             }
@@ -203,9 +205,19 @@ namespace Bloxel.Engine.UnitTests
             }
         }
 
+        static void TestZeroVectorNormalize()
+        {
+            Vector3 zeroVector = Vector3.Zero;
+            zeroVector.Normalize();
+
+            Console.WriteLine(zeroVector);
+
+            Console.ReadLine();
+        }
+
         public static void Main(String[] args)
         {
-            TestEdges();
+            TestZeroVectorNormalize();
         }
     }
 }

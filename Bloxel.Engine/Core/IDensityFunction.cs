@@ -47,14 +47,5 @@ namespace Bloxel.Engine.Core
         /// <param name="z">The z-component of the position.</param>
         /// <returns>The result of evaluating the implicit function at the specified position.</returns>
         float f(float x, float y, float z);
-
-        /// <summary>
-        /// Evaluates the gradient of the implicit function at the specified position.
-        /// </summary>
-        /// <param name="x">The x-component of the position.</param>
-        /// <param name="y">The y-component of the position.</param>
-        /// <param name="z">The z-component of the position.</param>
-        /// <returns>The gradient vector of the implicit function at the specified position.</returns>
-        Vector3 df(float x, float y, float z);
     }
 }

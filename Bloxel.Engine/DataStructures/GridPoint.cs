@@ -36,7 +36,7 @@ namespace Bloxel.Engine.DataStructures
     public struct GridPoint
     {
         public static GridPoint Full = new GridPoint(0, 1.0f);
-        public static GridPoint Empty = new GridPoint(0, 0.0f);
+        public static GridPoint Empty = new GridPoint(0, -1.0f);
 
         private byte _blockType;
         private Density _density;

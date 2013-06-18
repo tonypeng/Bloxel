@@ -15,6 +15,7 @@ using Bloxel.Engine.Cameras;
 using Bloxel.Engine.Core;
 using Bloxel.Engine.DataStructures;
 using Bloxel.Engine.Input;
+using Bloxel.Engine.Utilities;
 
 namespace Playground
 {
@@ -23,20 +24,31 @@ namespace Playground
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
+        CameraManager camManager;
         Camera cam;
         Chunk chunk;
 
         SpriteFont font;
         BasicEffect basicEffect;
         SphereDensityFunction sdf;
+        SimplexDensityFunction simplexDensityFunction;
 
         FPSCounter _fpsCounter;
+
+        IChunkManager _chunkManager;
+        World _world;
+
+        ContentLibrary contentLibrary;
 
         bool _paused = false;
 
         public Playground()
         {
             graphics = new GraphicsDeviceManager(this);
+
+            graphics.PreferredBackBufferWidth = 1280;
+            graphics.PreferredBackBufferHeight = 720;
+
             Content.RootDirectory = "Content";
 
             cam = new FreeCamera();
@@ -60,29 +72,63 @@ namespace Playground
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
+            contentLibrary = new ContentLibrary();
+            contentLibrary.Load(GraphicsDevice, Content);
+
             basicEffect = new BasicEffect(GraphicsDevice);
 
             font = Content.Load<SpriteFont>("Arial");
 
-            _fpsCounter = new FPSCounter(this, font);
+            _fpsCounter = new FPSCounter(this,  font);
             _fpsCounter.LoadContent();
 
+            camManager = new CameraManager();
+            camManager.AddCamera("player", cam);
+            camManager.MainCameraName = "player";
+
+            /*
             Console.WriteLine("Creating chunk...");
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            chunk = new Chunk(null, Vector3I.Zero, 16, 128, 16);
+            chunk = new Chunk(null, Vector3I.Zero, 16, 16, 16);
             sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 6f);
-            DensityChunkGenerator dcg = new DensityChunkGenerator(sdf);
+            
+            DensityChunkGenerator dcg = new DensityChunkGenerator(simplexDensityFunction);
             dcg.Generate(chunk);
             sw.Stop();
             Console.WriteLine("Done in {0}ms.", sw.ElapsedMilliseconds);
             Console.WriteLine("Density at (7, 7, 7): {0}", chunk.PointAt(7, 7, 7).Density);
             Console.WriteLine("Building chunk mesh...");
-            DualContourChunkBuilder dccb = new DualContourChunkBuilder(GraphicsDevice, sdf, 0.0f);
+            DualContourChunkBuilder dccb = new DualContourChunkBuilder(GraphicsDevice, simplexDensityFunction, 0.6f);
             sw.Restart();
             dccb.Build(chunk);
             sw.Stop();
-            Console.WriteLine("Done in {0}ms.", sw.Elapsed.TotalMilliseconds);
+            Console.WriteLine("Done in {0}ms.", sw.Elapsed.TotalMilliseconds);*/
+
+            simplexDensityFunction = new SimplexDensityFunction(0.01f, 0.1f);
+
+            EngineConfiguration config = new EngineConfiguration();
+
+            config.ChunkWidth = 16;
+            config.ChunkHeight = 16;
+            config.ChunkLength = 16;
+
+            config.RenderDistance = 5;
+
+            int worldChunkHeight = 8;
+
+            // 113188818 - test seed
+            IslandChunkGenerator icg = new IslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
+
+            _world = new World(config);
+            _chunkManager = new StaticThreadedChunkManager(_world, 5, worldChunkHeight, 5);
+            _chunkManager.ChunkSystem = new DualContourColoredChunkSystem(GraphicsDevice, contentLibrary, _chunkManager, camManager, _world, icg, 0.0f);
+            _chunkManager.ChunkGenerator = icg;
+
+            _world.ChunkManager = _chunkManager;
+
+            _chunkManager.GenerateChunks();
+            _chunkManager.BuildAllChunks();
         }
 
         protected override void UnloadContent()
@@ -144,15 +190,24 @@ namespace Playground
             }
             if (Input.Get().IsKeyDown(Keys.Tab))
             {
-                moveVector *= 0.25f;
+                moveVector *= 0.125f;
             }
 
             moveVector *= (float)gameTime.ElapsedGameTime.TotalSeconds / (1f / 60f);
 
-            if (Input.Get().IsKeyDown(Keys.Right, true))
-                cam.Yaw -= MathHelper.PiOver2;
-            if (Input.Get().IsKeyDown(Keys.Left, true))
-                cam.Yaw += MathHelper.PiOver2;
+            float mult = 1 / 2048f * (float)gameTime.ElapsedGameTime.TotalSeconds / (1f / 1000f);
+
+            if (Input.Get().IsKeyDown(Keys.LeftShift))
+                mult *= 2;
+
+            if (Input.Get().IsKeyDown(Keys.Right))
+                cam.Yaw -= MathHelper.Pi * mult;
+            if (Input.Get().IsKeyDown(Keys.Left))
+                cam.Yaw += MathHelper.Pi * mult;
+            if (Input.Get().IsKeyDown(Keys.Up))
+                cam.Pitch -= MathHelper.Pi * mult;
+            if (Input.Get().IsKeyDown(Keys.Down))
+                cam.Pitch += MathHelper.Pi * mult;
 
             cam.Position += moveVector;
 
@@ -167,35 +222,9 @@ namespace Playground
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            // back up values we're going to change
-            BlendState preBlendstate = GraphicsDevice.BlendState;
-            DepthStencilState preDepthStencilState = GraphicsDevice.DepthStencilState;
+            _chunkManager.ChunkSystem.Renderer.RenderAll();
 
-            // restore stuff that spritebatch messes up
-            GraphicsDevice.BlendState = BlendState.Opaque;
-            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
-            GraphicsDevice.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.None, FillMode = Microsoft.Xna.Framework.Graphics.FillMode.WireFrame };
-            GraphicsDevice.RasterizerState = RasterizerState.CullNone;
-            GraphicsDevice.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.CullCounterClockwiseFace };
-
-            basicEffect.VertexColorEnabled = true;
-            basicEffect.World = Matrix.Identity;
-            basicEffect.View = cam.View;
-            basicEffect.Projection = cam.Projection;
-
-            foreach (EffectPass pass in basicEffect.CurrentTechnique.Passes)
-            {
-                pass.Apply();
-
-                GraphicsDevice.SetVertexBuffer(chunk.VertexBuffer);
-                GraphicsDevice.Indices = chunk.IndexBuffer;
-
-                GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, chunk.VertexBuffer.VertexCount, 0, chunk.IndexBuffer.IndexCount / 3);
-
-                GraphicsDevice.SetVertexBuffer(chunk.NormalsVertexBuffer);
-                GraphicsDevice.DrawPrimitives(PrimitiveType.LineList, 0, chunk.NormalsVertexBuffer.VertexCount / 2);
-            }
-
+            /*
             for (int x = 5; x < 11; x++)
             {
                 for (int y = 5; y < 11; y++)
@@ -205,10 +234,7 @@ namespace Playground
                             BoundingBoxRenderer.Render(GraphicsDevice, new BoundingBox(new Vector3(x, y, z), new Vector3(x + 1, y + 1, z + 1)), Color.Gold, cam);
                     }
                 }
-            }
-
-            GraphicsDevice.BlendState = preBlendstate;
-            GraphicsDevice.DepthStencilState = preDepthStencilState;
+            }*/
 
             spriteBatch.Begin();
 

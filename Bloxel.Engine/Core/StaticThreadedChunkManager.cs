@@ -43,20 +43,35 @@ namespace Bloxel.Engine.Core
     /// </summary>
     public class StaticThreadedChunkManager : IChunkManager
     {
+        private World _world;
+
+        private IChunkGenerator _chunkGenerator;
         private IChunkSystem _chunkSystem;
 
         private int _worldWidth, _worldHeight, _worldLength;
         private Chunk[] _chunks;
 
+        public IChunkGenerator ChunkGenerator { get { return _chunkGenerator; } set { _chunkGenerator = value; } }
         public IChunkSystem ChunkSystem { get { return _chunkSystem; } set { _chunkSystem = value; } }
 
         public Chunk this[int x, int y, int z] { get { return Get(x, y, z); } }
 
-        public StaticThreadedChunkManager(int worldWidth, int worldHeight, int worldLength)
+        public int MinimumX { get { return 0; } }
+        public int MaximumX { get { return _worldWidth - 1; } }
+
+        public int MinimumY { get { return 0; } }
+        public int MaximumY { get { return _worldHeight - 1; } }
+
+        public int MinimumZ { get { return 0; } }
+        public int MaximumZ { get { return _worldLength - 1; } }
+
+        public StaticThreadedChunkManager(World world, int worldWidth, int worldHeight, int worldLength)
         {
             Contract.Assert(worldWidth > 0);
             Contract.Assert(worldHeight > 0);
             Contract.Assert(worldLength > 0);
+
+            _world = world;
 
             _worldWidth = worldWidth;
             _worldHeight = worldHeight;
@@ -67,6 +82,61 @@ namespace Bloxel.Engine.Core
             _chunkSystem = null;
         }
 
+        public void GenerateChunks()
+        {
+            int chunkWidth = _world.EngineConfiguration.ChunkWidth;
+            int chunkHeight = _world.EngineConfiguration.ChunkHeight;
+            int chunkLength = _world.EngineConfiguration.ChunkLength;
+
+            for (int x = 0; x < _worldWidth; x++)
+            {
+                for (int y = 0; y < _worldHeight; y++)
+                {
+                    for (int z = 0; z < _worldLength; z++)
+                    {
+                        int index = ArrayUtil.Convert3DTo1D(x, y, z, _worldLength, _worldHeight);
+
+                        Chunk c = new Chunk(_world, new Vector3I(x * chunkWidth, y * chunkHeight, z * chunkLength), chunkWidth, chunkHeight, chunkLength);
+                        _chunkGenerator.Generate(c);
+
+                        _chunks[index] = c;
+                    }
+                }
+            }
+        }
+
+        public void BuildAllChunks()
+        {
+            for (int x = 0; x < _worldWidth; x++)
+            {
+                for (int y = 0; y < _worldHeight; y++)
+                {
+                    for (int z = 0; z < _worldLength; z++)
+                    {
+                        int index = ArrayUtil.Convert3DTo1D(x, y, z, _worldLength, _worldHeight);
+
+                        _chunkSystem.Builder.Build(_chunks[index]);
+                    }
+                }
+            }
+
+            if (_chunkSystem.Builder.RequiresPostProcess)
+            {
+                for (int x = 0; x < _worldWidth; x++)
+                {
+                    for (int y = 0; y < _worldHeight; y++)
+                    {
+                        for (int z = 0; z < _worldLength; z++)
+                        {
+                            int index = ArrayUtil.Convert3DTo1D(x, y, z, _worldLength, _worldHeight);
+
+                            _chunkSystem.Builder.PostProcess(_chunks[index]);
+                        }
+                    }
+                }
+            }
+        }
+
         public void Update(Vector3 cameraPosition)
         {
             Contract.Assert(_chunkSystem != null);
@@ -75,14 +145,21 @@ namespace Bloxel.Engine.Core
         public void Render()
         {
             Contract.Assert(_chunkSystem != null);
+
+            for (int i = 0; i < _chunks.Length; i++)
+            {
+                _chunkSystem.Renderer.Render(_chunks[i]);
+            }
         }
 
         public Chunk Get(int x, int y, int z)
         {
-            int index = ArrayUtil.Convert3DTo1D(x, y, z, _worldLength, _worldHeight);
-
-            if (index < 0 || index >= _chunks.Length)
+            if (x < 0 || x >= _worldWidth ||
+                y < 0 || y >= _worldHeight ||
+                z < 0 || z >= _worldLength)
                 return null;
+
+            int index = ArrayUtil.Convert3DTo1D(x, y, z, _worldLength, _worldHeight);
 
             return _chunks[index];
         }

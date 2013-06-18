@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
@@ -140,51 +141,200 @@ namespace Bloxel.Engine.Core
 
         private GraphicsDevice _device;
 
-        private Dictionary<Vector3I, CubeInfo> _positionToQEF;
-        // TODO: chunk independent vertex data might be thread issues later
-        private List<VertexPositionColor> _vertices;
-        private List<VertexPositionColor> _normalVertices;
-        private Dictionary<Vector3I, short> _positionToIndex;
-        private List<short> _indices;
-        private List<Edge> _intersectingEdges;
-        private HashSet<Edge> _intersectingEdgesCheck;
+        private World _world;
+
+        private Dictionary<Chunk, List<VertexPositionNormalColor>> _vertices;
+        private Dictionary<Chunk, List<VertexPositionColor>> _normalVertices;
+        private Dictionary<Chunk, Dictionary<Vector3I, short>> _positionToIndex;
+        private Dictionary<Chunk, List<short>> _indices;
+        private Dictionary<Chunk, HashSet<Edge>> _intersectingEdges;
+        private Dictionary<Chunk, HashSet<Edge>> _borderEdges;
+        private Dictionary<Chunk, HashSet<Vector3I>> _neededBorderPositions;
 
         private float _minimumSolidDensity;
 
-        private IDensityFunction _densityFunction;
+        private ITerrainGradientFunction _densityGradientFunction;
 
         private int _triangles = 0;
 
-        public DualContourChunkBuilder(GraphicsDevice device, IDensityFunction densityFunction, float minimumSolidDensity)
+        /// <summary>
+        /// All chunks must generate QEF data so that neighbor chunks can use them.
+        /// </summary>
+        public bool RequiresPostProcess { get { return true; } }
+
+        public DualContourChunkBuilder(GraphicsDevice device, World world, ITerrainGradientFunction densityGradientFunction, float minimumSolidDensity)
         {
             _device = device;
 
-            _positionToQEF = new Dictionary<Vector3I, CubeInfo>();
-            _vertices = new List<VertexPositionColor>();
-            _indices = new List<short>();
-            _positionToIndex = new Dictionary<Vector3I, short>();
-            _intersectingEdges = new List<Edge>();
-            _intersectingEdgesCheck = new HashSet<Edge>();
-            _normalVertices = new List<VertexPositionColor>();
+            _world = world;
 
-            _densityFunction = densityFunction;
+            _vertices = new Dictionary<Chunk, List<VertexPositionNormalColor>>();
+            _indices = new Dictionary<Chunk, List<short>>();
+            _positionToIndex = new Dictionary<Chunk, Dictionary<Vector3I, short>>();
+            _intersectingEdges = new Dictionary<Chunk, HashSet<Edge>>();
+            _normalVertices = new Dictionary<Chunk, List<VertexPositionColor>>();
+            _borderEdges = new Dictionary<Chunk, HashSet<Edge>>();
+            _neededBorderPositions = new Dictionary<Chunk, HashSet<Vector3I>>();
+
+            _densityGradientFunction = densityGradientFunction;
 
             _minimumSolidDensity = minimumSolidDensity;
         }
 
         public void Build(Chunk c)
         {
+            if (!_vertices.ContainsKey(c))
+            {
+                _vertices.Add(c, new List<VertexPositionNormalColor>());
+                _indices.Add(c, new List<short>());
+                _positionToIndex.Add(c, new Dictionary<Vector3I, short>());
+                _intersectingEdges.Add(c, new HashSet<Edge>());
+                _normalVertices.Add(c, new List<VertexPositionColor>());
+                _borderEdges.Add(c, new HashSet<Edge>());
+                _neededBorderPositions.Add(c, new HashSet<Vector3I>());
+            }
+
             _triangles = 0;
 
             BuildVertices(c);
+
+            Console.WriteLine("{0} triangles.", _triangles);
+        }
+
+        public void PostProcess(Chunk c)
+        {
+            // after we build the chunk's vertices, we need to stitch the borders.
+
+            // each chunk only stiches borders with its XPositive, YPositive, and ZPositive neighbor chunks. (if they aren't null)
+            // this ensures that we don't create more quads than necessary.
+
+            List<VertexPositionNormalColor> vertices = _vertices[c];
+            Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
+            HashSet<Vector3I> neededBorderPositions = _neededBorderPositions[c];
+
+            foreach (Vector3I pos in neededBorderPositions)
+            {
+                Chunk otherChunk = _world.ChunkAt(c.Position.X + pos.X, c.Position.Y + pos.Y, c.Position.Z + pos.Z);
+
+                Vector3I otherChunkLocalPos = new Vector3I(pos.X % otherChunk.Width, pos.Y % otherChunk.Height, pos.Z % otherChunk.Length);
+
+                vertices.Add(_vertices[otherChunk][_positionToIndex[otherChunk][otherChunkLocalPos]]);
+                positionToIndex.Add(pos, (short)(vertices.Count - 1));
+            }
+
+            foreach (Edge e in _borderEdges[c])
+            {
+                Direction d = e.FaceDirection;
+
+                short[] indices = new short[6];
+
+                Vector3I[] cubes = e.GetCubePositions();
+
+                bool invalid = false;
+
+                for (int i = 0; i < cubes.Length; i++)
+                {
+                    if (cubes[i].X < 0 || cubes[i].Y < 0 || cubes[i].Z < 0)
+                    {
+                        invalid = true;
+                        break;
+                    }
+                }
+
+                if (invalid) continue;
+
+                // TODO: possible degenerate triangles (0 area)
+                switch (d)
+                {
+                    case Direction.XDecreasing:
+                    case Direction.ZDecreasing:
+                    case Direction.YIncreasing:
+                        indices[0] = positionToIndex[cubes[0]];
+                        indices[1] = positionToIndex[cubes[1]];
+                        indices[2] = positionToIndex[cubes[3]];
+                        indices[3] = positionToIndex[cubes[0]];
+                        indices[4] = positionToIndex[cubes[3]];
+                        indices[5] = positionToIndex[cubes[2]];
+                        break;
+                    case Direction.XIncreasing:
+                    case Direction.ZIncreasing:
+                    case Direction.YDecreasing:
+                        indices[0] = positionToIndex[cubes[0]];
+                        indices[1] = positionToIndex[cubes[3]];
+                        indices[2] = positionToIndex[cubes[1]];
+                        indices[3] = positionToIndex[cubes[0]];
+                        indices[4] = positionToIndex[cubes[2]];
+                        indices[5] = positionToIndex[cubes[3]];
+                        break;
+                }
+
+                short index0 = positionToIndex[cubes[0]];
+                short index1 = positionToIndex[cubes[1]];
+                short index2 = positionToIndex[cubes[2]];
+                short index3 = positionToIndex[cubes[3]];
+
+                // triangle 1
+                Vector3 point0 = vertices[indices[0]].Position;
+                Vector3 point1 = vertices[indices[1]].Position;
+                Vector3 point2 = vertices[indices[2]].Position;
+
+                Vector3 v01 = point1 - point0;
+                Vector3 v12 = point2 - point1;
+
+                Vector3 normal1 = Vector3.Cross(v12, v01);
+                normal1.Normalize();
+
+                if (Single.IsNaN(normal1.X) || Single.IsNaN(normal1.Y) || Single.IsNaN(normal1.Z))
+                    normal1 = Vector3.Zero; // TODO: this is a hack; think it through later
+
+                // triangle 2
+                Vector3 point3 = vertices[indices[3]].Position;
+                Vector3 point4 = vertices[indices[4]].Position;
+                Vector3 point5 = vertices[indices[5]].Position;
+
+                Vector3 v34 = point4 - point3;
+                Vector3 v45 = point5 - point4;
+
+                Vector3 normal2 = Vector3.Cross(v45, v34);
+                normal2.Normalize();
+
+                if (Single.IsNaN(normal2.X) || Single.IsNaN(normal2.Y) || Single.IsNaN(normal2.Z))
+                    normal2 = Vector3.Zero; // TODO: this is a hack; think it through later
+
+                _triangles += 2;
+
+                VertexPositionNormalColor vertex0 = vertices[indices[0]];
+                VertexPositionNormalColor vertex1 = vertices[indices[1]];
+                VertexPositionNormalColor vertex2 = vertices[indices[2]];
+
+                vertex0.Normal += normal1;
+                vertex1.Normal += normal1;
+                vertex2.Normal += normal1;
+
+                vertices[indices[0]] = vertex0;
+                vertices[indices[1]] = vertex1;
+                vertices[indices[2]] = vertex2;
+
+                VertexPositionNormalColor vertex3 = vertices[indices[3]];
+                VertexPositionNormalColor vertex4 = vertices[indices[4]];
+                VertexPositionNormalColor vertex5 = vertices[indices[5]];
+
+                vertex3.Normal += normal2;
+                vertex4.Normal += normal2;
+                vertex5.Normal += normal2;
+
+                vertices[indices[3]] = vertex3;
+                vertices[indices[4]] = vertex4;
+                vertices[indices[5]] = vertex5;
+
+                AddIndices(c, indices);
+            }
 
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
             BuildBuffers(c);
             sw.Stop();
             Console.WriteLine("BuildBuffers(): {0}ms", sw.ElapsedMilliseconds);
-
-            Console.WriteLine("{0} triangles.", _triangles);
         }
 
         private void BuildVertices(Chunk c)
@@ -204,14 +354,21 @@ namespace Bloxel.Engine.Core
 
         private void CreateMinimizingVertices(Chunk c)
         {
-            for (int x = 0; x < c.Width - 1; x++)
+            HashSet<Edge> intersectingEdges = _intersectingEdges[c];
+            List<VertexPositionNormalColor> vertices = _vertices[c];
+            Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
+
+            for (int x = 0; x < c.Width; x++)
             {
-                for (int z = 0; z < c.Length - 1; z++)
+                for (int z = 0; z < c.Length; z++)
                 {
-                    for (int y = 0; y < c.Height - 1; y++)
+                    for (int y = 0; y < c.Height; y++)
                     {
+                        if (x == 1 && y == 0 && z == 15)
+                            Console.WriteLine();
+
                         Vector3I chunkPos = new Vector3I(x, y, z);
-                        ProcessBlock(c, c.PointAt(x, y, z), chunkPos + c.Position, chunkPos);
+                        ProcessBlock(intersectingEdges, vertices, positionToIndex, c, c.PointAt(x, y, z), chunkPos + c.Position, chunkPos);
                     }
                 }
             }
@@ -219,7 +376,10 @@ namespace Bloxel.Engine.Core
 
         private void ConnectMinimizingVertices(Chunk c)
         {
-            foreach (Edge e in _intersectingEdges)
+            Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
+            List<VertexPositionNormalColor> vertices = _vertices[c];
+
+            foreach (Edge e in _intersectingEdges[c])
             {
                 Direction d = e.FaceDirection;
 
@@ -227,40 +387,65 @@ namespace Bloxel.Engine.Core
 
                 Vector3I[] cubes = e.GetCubePositions();
 
+                bool invalid = false;
+
+                HashSet<Edge> borderEdges = _borderEdges[c];
+                HashSet<Vector3I> neededBorderPositions = _neededBorderPositions[c];
+
+                for (int i = 0; i < cubes.Length; i++)
+                {
+                    if (cubes[i].X < 0 || cubes[i].Y < 0 || cubes[i].Z < 0)
+                    {
+                        invalid = true;
+                        break;
+                    }
+
+                    if (cubes[i].X > c.Width - 1 || cubes[i].Y > c.Height - 1 || cubes[i].Z > c.Length - 1)
+                    {
+                        borderEdges.Add(e);
+
+                        neededBorderPositions.Add(cubes[i]);
+
+                        invalid = true;
+                    }
+                }
+
+                if (invalid) continue;
+
                 // TODO: possible degenerate triangles (0 area)
                 switch (d)
                 {
                     case Direction.XDecreasing:
                     case Direction.ZDecreasing:
                     case Direction.YIncreasing:
-                        indices[0] = _positionToIndex[cubes[0]];
-                        indices[1] = _positionToIndex[cubes[1]];
-                        indices[2] = _positionToIndex[cubes[3]];
-                        indices[3] = _positionToIndex[cubes[0]];
-                        indices[4] = _positionToIndex[cubes[3]];
-                        indices[5] = _positionToIndex[cubes[2]];
+                        indices[0] = positionToIndex[cubes[0]];
+                        indices[1] = positionToIndex[cubes[1]];
+                        indices[2] = positionToIndex[cubes[3]];
+                        indices[3] = positionToIndex[cubes[0]];
+                        indices[4] = positionToIndex[cubes[3]];
+                        indices[5] = positionToIndex[cubes[2]];
                         break;
                     case Direction.XIncreasing:
                     case Direction.ZIncreasing:
                     case Direction.YDecreasing:
-                        indices[0] = _positionToIndex[cubes[0]];
-                        indices[1] = _positionToIndex[cubes[3]];
-                        indices[2] = _positionToIndex[cubes[1]];
-                        indices[3] = _positionToIndex[cubes[0]];
-                        indices[4] = _positionToIndex[cubes[2]];
-                        indices[5] = _positionToIndex[cubes[3]];
+                        indices[0] = positionToIndex[cubes[0]];
+                        indices[1] = positionToIndex[cubes[3]];
+                        indices[2] = positionToIndex[cubes[1]];
+                        indices[3] = positionToIndex[cubes[0]];
+                        indices[4] = positionToIndex[cubes[2]];
+                        indices[5] = positionToIndex[cubes[3]];
                         break;
                 }
 
-                short index0 = _positionToIndex[cubes[0]];
-                short index1 = _positionToIndex[cubes[1]];
-                short index2 = _positionToIndex[cubes[2]];
-                short index3 = _positionToIndex[cubes[3]];
+                short index0 = positionToIndex[cubes[0]];
+                short index1 = positionToIndex[cubes[1]];
+                short index2 = positionToIndex[cubes[2]];
+                short index3 = positionToIndex[cubes[3]];
 
                 // triangle 1
-                Vector3 point0 = _vertices[indices[0]].Position;
-                Vector3 point1 = _vertices[indices[1]].Position;
-                Vector3 point2 = _vertices[indices[2]].Position;
+                Vector3 point0 = vertices[indices[0]].Position;
+                Vector3 point1 = vertices[indices[1]].Position;
+                Vector3 point2 = vertices[indices[2]].Position;
 
                 Vector3 v01 = point1 - point0;
                 Vector3 v12 = point2 - point1;
@@ -272,9 +457,9 @@ namespace Bloxel.Engine.Core
                     normal1 = Vector3.Zero; // TODO: this is a hack; think it through later
 
                 // triangle 2
-                Vector3 point3 = _vertices[indices[3]].Position;
-                Vector3 point4 = _vertices[indices[4]].Position;
-                Vector3 point5 = _vertices[indices[5]].Position;
+                Vector3 point3 = vertices[indices[3]].Position;
+                Vector3 point4 = vertices[indices[4]].Position;
+                Vector3 point5 = vertices[indices[5]].Position;
 
                 Vector3 v34 = point4 - point3;
                 Vector3 v45 = point5 - point4;
@@ -285,26 +470,46 @@ namespace Bloxel.Engine.Core
                 if (Single.IsNaN(normal2.X) || Single.IsNaN(normal2.Y) || Single.IsNaN(normal2.Z))
                     normal2 = Vector3.Zero; // TODO: this is a hack; think it through later
 
-                _normalVertices.Add(new VertexPositionColor(point1, Color.White));
-                _normalVertices.Add(new VertexPositionColor(point1 + normal1, Color.White));
-                _normalVertices.Add(new VertexPositionColor(point2, Color.Black));
-                _normalVertices.Add(new VertexPositionColor(point2 + normal2, Color.Black));
+                //_normalVertices.Add(new VertexPositionColor(point1, Color.White));
+                //_normalVertices.Add(new VertexPositionColor(point1 + normal1, Color.White));
+                //_normalVertices.Add(new VertexPositionColor(point2, Color.Black));
+                //_normalVertices.Add(new VertexPositionColor(point2 + normal2, Color.Black));
 
                 _triangles += 2;
 
-                AddIndices(indices);
+                VertexPositionNormalColor vertex0 = vertices[indices[0]];
+                VertexPositionNormalColor vertex1 = vertices[indices[1]];
+                VertexPositionNormalColor vertex2 = vertices[indices[2]];
+
+                vertex0.Normal += normal1;
+                vertex1.Normal += normal1;
+                vertex2.Normal += normal1;
+
+                vertices[indices[0]] = vertex0;
+                vertices[indices[1]] = vertex1;
+                vertices[indices[2]] = vertex2;
+
+                VertexPositionNormalColor vertex3 = vertices[indices[3]];
+                VertexPositionNormalColor vertex4 = vertices[indices[4]];
+                VertexPositionNormalColor vertex5 = vertices[indices[5]];
+
+                vertex3.Normal += normal2;
+                vertex4.Normal += normal2;
+                vertex5.Normal += normal2;
+
+                vertices[indices[3]] = vertex3;
+                vertices[indices[4]] = vertex4;
+                vertices[indices[5]] = vertex5;
+
+                AddIndices(c, indices);
             }
         }
 
-        private void ProcessBlock(Chunk c, GridPoint min, Vector3I worldPosition, Vector3I localPosition)
+        private void ProcessBlock(HashSet<Edge> intersectingEdges, List<VertexPositionNormalColor> vertices, Dictionary<Vector3I, short> positionToIndex, Chunk c, GridPoint min, Vector3I worldPosition, Vector3I localPosition)
         {
             int lX = localPosition.X;
             int lY = localPosition.Y;
             int lZ = localPosition.Z;
-
-            Contract.Assert(lX < c.Width - 1);
-            Contract.Assert(lY < c.Height - 1);
-            Contract.Assert(lZ < c.Length - 1);
 
             GridPoint XYZ = min;
             GridPoint XMaxYZ = c.PointAt(lX + 1, lY, lZ);
@@ -323,20 +528,26 @@ namespace Bloxel.Engine.Core
             if (hermite.IntersectionPoints.Count == 0)
                 return;
 
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+
             // investigate possible optimization by using AddRange, since it re-allocates the list only once.
+            List<Edge> edges = new List<Edge>();
             for (int i = 0; i < data.Item2.Length; i++)
             {
-                if (!_intersectingEdgesCheck.Contains(data.Item2[i]))
+                if (!intersectingEdges.Contains(data.Item2[i]))
                 {
-                    _intersectingEdges.Add(data.Item2[i]);
-                    _intersectingEdgesCheck.Add(data.Item2[i]);
+                    edges.Add(data.Item2[i]);
                 }
             }
 
+            intersectingEdges.UnionWith(edges);
+
             Vector3 minimizingVertex = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.01f, 25);
 
-            _vertices.Add(new VertexPositionColor(minimizingVertex, Color.Gray));
-            _positionToIndex.Add(localPosition, (short)(_vertices.Count - 1));
+            vertices.Add(new VertexPositionNormalColor(c.Position.ToVector3() + minimizingVertex, Vector3.Zero, Color.Green));
+            positionToIndex.Add(localPosition, (short)(_vertices[c].Count - 1));
+
             //_positionToQEF.Add(localPosition, new CubeInfo(minimizingVertex, data.Item2));
         }
 
@@ -431,7 +642,7 @@ namespace Bloxel.Engine.Core
                     corner1Point.Density,
                     corner2Point.Density);
 
-                Vector3 normal = _densityFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
+                Vector3 normal = _densityGradientFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
 
                 hermiteData.Add(intersectionPoint, normal);
             }
@@ -479,16 +690,19 @@ namespace Bloxel.Engine.Core
 
         private void BuildBuffers(Chunk c)
         {
-            if (_vertices.Count <= 0 || _indices.Count <= 0)
+            if (_vertices[c].Count <= 0 || _indices[c].Count <= 0)
                 return;
 
-            VertexPositionColor[] vertices = new VertexPositionColor[_vertices.Count];
-            short[] indices = new short[_indices.Count];
-            VertexPositionColor[] normal = new VertexPositionColor[_normalVertices.Count];
+            VertexPositionNormalColor[] vertices = new VertexPositionNormalColor[_vertices[c].Count];
+            short[] indices = new short[_indices[c].Count];
 
-            _vertices.CopyTo(vertices);
-            _indices.CopyTo(indices);
-            _normalVertices.CopyTo(normal);
+            _vertices[c].CopyTo(vertices);
+            _indices[c].CopyTo(indices);
+            
+            NormalizeNormals(c, vertices);
+
+            VertexPositionColor[] normal = new VertexPositionColor[_normalVertices[c].Count];
+            _normalVertices[c].CopyTo(normal);
 
             lock (c.GraphicsSync)
             {
@@ -499,25 +713,39 @@ namespace Bloxel.Engine.Core
                 if (c.NormalsVertexBuffer != null)
                     c.NormalsVertexBuffer.Dispose();
 
-                c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), vertices.Length, BufferUsage.WriteOnly);
+                c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionNormalColor), vertices.Length, BufferUsage.WriteOnly);
                 c.IndexBuffer = new DynamicIndexBuffer(_device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
                 c.NormalsVertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), normal.Length, BufferUsage.WriteOnly);
 
-                c.VertexBuffer.SetData<VertexPositionColor>(vertices);
+                c.VertexBuffer.SetData<VertexPositionNormalColor>(vertices);
                 c.IndexBuffer.SetData<short>(indices);
                 c.NormalsVertexBuffer.SetData<VertexPositionColor>(normal);
             }
 
-            _vertices.Clear();
-            _normalVertices.Clear();
-            _indices.Clear();
-            _intersectingEdges.Clear();
-            _intersectingEdgesCheck.Clear();
+            //_vertices[c].Clear();
+            _normalVertices[c].Clear();
+            _indices[c].Clear();
+            _intersectingEdges[c].Clear();
+            //_positionToIndex[c].Clear();
         }
 
-        private void AddIndices(params short[] indices)
+        private void NormalizeNormals(Chunk c, VertexPositionNormalColor[] normals)
         {
-            _indices.AddRange(indices);
+            for (int i = 0; i < normals.Length; i++)
+            {
+                normals[i].Normal.Normalize();
+
+                if (Single.IsNaN(normals[i].Normal.X) || Single.IsNaN(normals[i].Normal.Y) || Single.IsNaN(normals[i].Normal.Z))
+                    normals[i].Normal = Vector3.Zero;
+
+                _normalVertices[c].Add(new VertexPositionColor(normals[i].Position, Color.Gray));
+                _normalVertices[c].Add(new VertexPositionColor(normals[i].Position + normals[i].Normal, Color.Gray));
+            }
+        }
+
+        private void AddIndices(Chunk c, params short[] indices)
+        {
+            _indices[c].AddRange(indices);
         }
     }
 }

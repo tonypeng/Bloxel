@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - IChunkManager.cs
+ * Bloxel - DualContourColoredChunkSystem.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -31,34 +31,24 @@ using System.Linq;
 using System.Text;
 
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
-using Bloxel.Engine.DataStructures;
+using Bloxel.Engine.Cameras;
 
 namespace Bloxel.Engine.Core
 {
-    public interface IChunkManager
+    public class DualContourColoredChunkSystem : IChunkSystem
     {
-        IChunkGenerator ChunkGenerator { get; set; }
-        IChunkSystem ChunkSystem { get; set; }
+        private IChunkBuilder _builder;
+        private IChunkRenderer _renderer;
 
-        Chunk this[int x, int y, int z] { get; }
+        public IChunkBuilder Builder { get { return _builder; } }
+        public IChunkRenderer Renderer { get { return _renderer; } }
 
-        int MinimumX { get; }
-        int MaximumX { get; }
-
-        int MinimumY { get; }
-        int MaximumY { get; }
-
-        int MinimumZ { get; }
-        int MaximumZ { get; }
-
-        Chunk Get(int x, int y, int z);
-
-        void GenerateChunks();
-        void BuildAllChunks();
-
-        void Update(Vector3 cameraPosition);
-
-        void Render();
+        public DualContourColoredChunkSystem(GraphicsDevice device, ContentLibrary contentLibrary, IChunkManager chunkManager, CameraManager cameraManager, World world, ITerrainGradientFunction densityGradientFunction, float minimumSolidDensity)
+        {
+            _builder = new DualContourChunkBuilder(device, world, densityGradientFunction, minimumSolidDensity);
+            _renderer = new ColoredChunkRenderer(world.EngineConfiguration, contentLibrary, device, cameraManager, chunkManager);
+        }
     }
 }

@@ -44,6 +44,8 @@ namespace Bloxel.Engine.DataStructures
     /// </summary>
     public class Chunk
     {
+        private World _world;
+
         // Very important.
         private GridPoint[] _points;
 
@@ -53,6 +55,7 @@ namespace Bloxel.Engine.DataStructures
         private IndexBuffer _indexBuffer;
 
         private int _width, _height, _length;
+        private BoundingBox _boundingBox;
 
         public GridPoint[] Points { get { return _points; } }
 
@@ -68,11 +71,48 @@ namespace Bloxel.Engine.DataStructures
 
         public object GraphicsSync = new object();
 
+        public Chunk XNegative
+        {
+            get { return _world.ChunkManager[_position.X - _width, _position.Y, _position.Z]; }
+        }
+
+        public Chunk XPositive
+        {
+            get { return _world.ChunkManager[_position.X + _width, _position.Y, _position.Z]; }
+        }
+
+        public Chunk YNegative
+        {
+            get { return _world.ChunkManager[_position.X, _position.Y - _height, _position.Z]; }
+        }
+
+        public Chunk YPositive
+        {
+            get { return _world.ChunkManager[_position.X, _position.Y + _height, _position.Z]; }
+        }
+
+        public Chunk ZNegative
+        {
+            get { return _world.ChunkManager[_position.X, _position.Y, _position.Z - _length]; }
+        }
+
+        public Chunk ZPositive
+        {
+            get { return _world.ChunkManager[_position.X, _position.Y, _position.Z + _length]; }
+        }
+
+        public BoundingBox BoundingBox
+        {
+            get { return _boundingBox; }
+        }
+
         public Chunk(World world, Vector3I position, int width, int height, int length)
         {
             Contract.Assert(width > 0);
             Contract.Assert(height > 0);
             Contract.Assert(length > 0);
+
+            _world = world;
 
             _position = position;
 
@@ -80,20 +120,22 @@ namespace Bloxel.Engine.DataStructures
             _height = height;
             _length = length;
 
+            _boundingBox = new Microsoft.Xna.Framework.BoundingBox(_position.ToVector3(), (_position + new Vector3I(_width, _height, _length)).ToVector3());
+
             _points = new GridPoint[width * height * length];
 
             _vertexBuffer = null;
             _indexBuffer = null;
         }
 
-        public void SetPoint(int x, int y, int z, GridPoint b)
-        {
-            _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)] = b;
-        }
-
         public GridPoint PointAt(int x, int y, int z)
         {
-            return _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)];
+            return _world.PointAt(x + _position.X, y + _position.Y, z + _position.Z);
+        }
+
+        public void SetPoint(int x, int y, int z, GridPoint gp)
+        {
+            _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)] = gp;
         }
     }
 }

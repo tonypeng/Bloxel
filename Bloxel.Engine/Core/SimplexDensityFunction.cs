@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - IChunkManager.cs
+ * Bloxel - SimplexDensityFunction.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -24,7 +24,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,33 +31,45 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 
-using Bloxel.Engine.DataStructures;
+using Bloxel.Engine.Utilities;
 
 namespace Bloxel.Engine.Core
 {
-    public interface IChunkManager
+    public class SimplexDensityFunction : IDensityFunction, ITerrainGradientFunction
     {
-        IChunkGenerator ChunkGenerator { get; set; }
-        IChunkSystem ChunkSystem { get; set; }
+        private SimplexNoiseGenerator _noise;
 
-        Chunk this[int x, int y, int z] { get; }
+        private float _delta;
+        private float _magnification;
 
-        int MinimumX { get; }
-        int MaximumX { get; }
+        public SimplexDensityFunction(float delta, float magnification)
+        {
+            _delta = delta;
+            _magnification = magnification;
 
-        int MinimumY { get; }
-        int MaximumY { get; }
+            _noise = new SimplexNoiseGenerator(Environment.TickCount);
+        }
 
-        int MinimumZ { get; }
-        int MaximumZ { get; }
+        public float f(float x, float y, float z)
+        {
+            float octave1 = _noise.noise3d(x * _magnification, y * _magnification, z * _magnification);
+            float octave2 = _noise.noise3d(x * _magnification * 0.5f, y * _magnification * 0.5f, z * _magnification * 0.5f);
 
-        Chunk Get(int x, int y, int z);
+            return octave1 * 0.75f + octave2 * 0.25f;
+        }
 
-        void GenerateChunks();
-        void BuildAllChunks();
+        public Vector3 df(float x, float y, float z)
+        {
+            float baseDensity = f(x, y, z);
 
-        void Update(Vector3 cameraPosition);
+            float normalX = f(x + _delta, y, z) - baseDensity;
+            float normalY = f(x, y + _delta, z) - baseDensity;
+            float normalZ = f(x, y, z + _delta) - baseDensity;
 
-        void Render();
+            Vector3 gradient = new Vector3(normalX, normalY, normalZ);
+            gradient.Normalize();
+
+            return gradient;
+        }
     }
 }

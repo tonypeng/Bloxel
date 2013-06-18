@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - IChunkManager.cs
+ * Bloxel - IDensityGradientFunction.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -24,7 +24,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,33 +31,17 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 
-using Bloxel.Engine.DataStructures;
-
 namespace Bloxel.Engine.Core
 {
-    public interface IChunkManager
+    public interface ITerrainGradientFunction
     {
-        IChunkGenerator ChunkGenerator { get; set; }
-        IChunkSystem ChunkSystem { get; set; }
-
-        Chunk this[int x, int y, int z] { get; }
-
-        int MinimumX { get; }
-        int MaximumX { get; }
-
-        int MinimumY { get; }
-        int MaximumY { get; }
-
-        int MinimumZ { get; }
-        int MaximumZ { get; }
-
-        Chunk Get(int x, int y, int z);
-
-        void GenerateChunks();
-        void BuildAllChunks();
-
-        void Update(Vector3 cameraPosition);
-
-        void Render();
+        /// <summary>
+        /// Evaluates the gradient vector of the terrain at a specified position.
+        /// </summary>
+        /// <param name="x">The x-component of the position.</param>
+        /// <param name="y">The y-component of the position.</param>
+        /// <param name="z">The z-component of the position.</param>
+        /// <returns>The gradient vector of the terrain at the specified position.</returns>
+        Vector3 df(float x, float y, float z);
     }
 }

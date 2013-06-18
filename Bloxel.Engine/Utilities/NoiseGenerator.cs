@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - DensityChunkGenerator.cs
+ * Bloxel - NoiseGenerator.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -24,47 +24,50 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-using Microsoft.Xna.Framework;
-
-using Bloxel.Engine.DataStructures;
-
-namespace Bloxel.Engine.Core
+namespace Bloxel.Engine.Utilities
 {
-    public class DensityChunkGenerator : IChunkGenerator
+    public abstract class NoiseGenerator
     {
-        private IDensityFunction _densityFunction;
+        public abstract float noise2d(float x, float y);
+        public abstract float noise3d(float x, float y, float z);
 
-        public DensityChunkGenerator(IDensityFunction densityFunction)
+        public virtual float GenerateNoise(float x, float y, float frequency, float amplitude, float persistence, int octaves, Func<float, float, float> smooth)
         {
-            _densityFunction = densityFunction;
+            float noise = 0.0f;
+
+            float maxAmplitude = 0f;
+
+            for (int i = 0; i < octaves; i++)
+            {
+                noise += noise2d(x * frequency, y * frequency) * amplitude;
+                frequency *= 2f;
+                maxAmplitude += amplitude;
+                amplitude *= persistence;
+            }
+
+            return noise / maxAmplitude;
         }
 
-        public void Generate(Chunk c)
+        public virtual float GenerateNoise(float x, float y, float z, float frequency, float amplitude, float persistence, int octaves, Func<float, float, float> smooth)
         {
-            for (int x = 0; x < c.Width; x++)
+            float noise = 0.0f;
+
+            float maxAmplitude = 0f;
+
+            for (int i = 0; i < octaves; i++)
             {
-                for (int z = 0; z < c.Length; z++)
-                {
-                    for (int y = 0; y < c.Height; y++)
-                    {
-                        float value = _densityFunction.f(c.Position.X + x, c.Position.Y + y, c.Position.Z + z);
-
-                        if (value > 1.0f)
-                            value = 1.0f;
-                        if (value < -1.0f)
-                            value = -1.0f;
-
-                        GridPoint b = new GridPoint(0, value);
-                        c.SetPoint(x, y, z, b);
-                    }
-                }
+                noise += noise3d(x * frequency, y * frequency, z * frequency) * amplitude;
+                frequency *= 2f;
+                maxAmplitude += amplitude;
+                amplitude *= persistence;
             }
+
+            return noise / maxAmplitude;
         }
     }
 }
