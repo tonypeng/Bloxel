@@ -2,22 +2,20 @@ struct VertexInput
 {
 	float4 Position	: POSITION0;
 	float3 Normal : NORMAL0;
-	float Color	: COLOR0;
+	float4 Color	: COLOR0;
 };
 
 struct PixelInput
 {
 	float4 Position : POSITION0;
 	float Distance : TEXCOORD0;
-	float Color : COLOR0;
+	float4 Color : COLOR0;
 	float Light : COLOR1;
 };
 
 float4x4 xView;
 float4x4 xProjection;
 float4x4 xWorld;
-
-float RippleTime = 0;
 
 float3 CameraPosition;
 

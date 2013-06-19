@@ -102,7 +102,7 @@ namespace Bloxel.Engine.Core
 
             //return lowerGround + theNoise * 0.75f;
 
-            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.02f, 0.5f, 0.5f, 3, null) + 1f) * 0.4f;
+            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.01f, 0.5f, 0.5f, 3, null) + 1f) * 0.4f;
 
             return (theNoise * ((float)_worldMaxHeight / 2f)) + lowerGround;
         }
@@ -112,7 +112,7 @@ namespace Bloxel.Engine.Core
             int minGroundHeight = _worldMaxHeight / 4;
             int minGroundDepth = (int)(_worldMaxHeight * 0.3f);
 
-            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.01f, 0.5f, 0.7f, 3, null) + 1f) * 0.4f;
+            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.05f, 0.5f, 0.7f, 3, null) + 1f) * 0.4f;
 
             return (theNoise * minGroundDepth + minGroundHeight);
         }
