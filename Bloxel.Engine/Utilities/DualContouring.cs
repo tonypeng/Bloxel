@@ -45,6 +45,11 @@ namespace Bloxel.Engine.Utilities
         public const int MAX_ITERATIONS = 50;
 
         /// <summary>
+        /// Length of the DualContourModification flag in the GridPoint metadata.
+        /// </summary>
+        public const int DUAL_CONTOUR_MODIFICATION_BIT_LENGTH = 4; // 4 bits reserved for the modification type yields 2^4=16 types of grid points
+
+        /// <summary>
         /// Calculates an approximated vertex for a block.
         /// The method is based off of the algorithm described in Leonardo Augusto Schmitz's paper on "Analysis and Acceleration of High Quality Isosurface Contouring" from October 2009.
         /// </summary>

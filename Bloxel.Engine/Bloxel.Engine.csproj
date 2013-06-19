@@ -82,6 +82,7 @@
     <Compile Include="Core\IChunkSystem.cs" />
     <Compile Include="Core\ITerrainGradientFunction.cs" />
     <Compile Include="Core\IslandChunkGenerator.cs" />
+    <Compile Include="DataStructures\DualContourModification.cs" />
     <Compile Include="Utilities\NoiseGenerator.cs" />
     <Compile Include="Core\SimplexDensityFunction.cs" />
     <Compile Include="Core\SphereDensityFunction.cs" />
@@ -90,7 +91,7 @@
     <Compile Include="DataStructures\Cube.cs" />
     <Compile Include="DataStructures\Edge.cs" />
     <Compile Include="DataStructures\GridPoint.cs" />
-    <Compile Include="DataStructures\BlockType.cs" />
+    <Compile Include="DataStructures\Material.cs" />
     <Compile Include="DataStructures\BlockVertex.cs" />
     <Compile Include="DataStructures\Chunk.cs" />
     <Compile Include="DataStructures\ChunkBuildOperation.cs" />

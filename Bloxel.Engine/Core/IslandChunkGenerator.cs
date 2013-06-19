@@ -40,11 +40,17 @@ namespace Bloxel.Engine.Core
     {
         int _worldMaxHeight;
         NoiseGenerator _noiseGenerator;
+        bool _isCubic;
 
         public IslandChunkGenerator(int worldMaxHeight, NoiseGenerator noiseGenerator)
+            : this(worldMaxHeight, noiseGenerator, false)
+        { }
+
+        public IslandChunkGenerator(int worldMaxHeight, NoiseGenerator noiseGenerator, bool cubic)
         {
             _worldMaxHeight = worldMaxHeight;
             _noiseGenerator = noiseGenerator;
+            _isCubic = cubic;
         }
 
         public void Generate(Chunk c)
@@ -79,7 +85,7 @@ namespace Bloxel.Engine.Core
                         {
                             float delta = groundHeight - groundHeightFloor;
 
-                            g = new GridPoint(0, delta / (1 - delta));
+                            g = _isCubic ? GridPoint.Full : new GridPoint(0, delta / (1 - delta));
                         }
                         else if (worldY > lowerGroundHeight)
                         {
@@ -89,6 +95,10 @@ namespace Bloxel.Engine.Core
                         {
                             g = GridPoint.Full;
                         }
+
+                        DualContourModification dcm = _isCubic ? DualContourModification.CUBE : DualContourModification.NATURAL;
+
+                        g.Set(0, (byte)dcm, DualContouring.DUAL_CONTOUR_MODIFICATION_BIT_LENGTH);
 
                         c.SetPoint(x, y, z, g);
                     }

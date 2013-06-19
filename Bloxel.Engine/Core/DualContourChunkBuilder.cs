@@ -642,7 +642,26 @@ namespace Bloxel.Engine.Core
                     corner1Point.Density,
                     corner2Point.Density);
 
-                Vector3 normal = _densityGradientFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
+                GridPoint subIsoValue = (corner2Point.Density < _minimumSolidDensity) ? corner2Point : corner1Point;
+
+                DualContourModification dcmType = (DualContourModification)(subIsoValue.Get(0, DualContouring.DUAL_CONTOUR_MODIFICATION_BIT_LENGTH));
+
+                Vector3 normal = Vector3.Zero;
+
+                switch (dcmType)
+                {
+                    case DualContourModification.NATURAL:
+                        normal = _densityGradientFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
+                        break;
+                    case DualContourModification.CUBE:
+                        normal = delta.ToVector3();
+                        break;
+                    case DualContourModification.SPHERE:
+                        normal = -1 * delta.ToVector3();
+                        break;
+                }
+
+                normal.Normalize();
 
                 hermiteData.Add(intersectionPoint, normal);
             }

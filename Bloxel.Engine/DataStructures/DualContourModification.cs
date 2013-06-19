@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Block.cs
+ * Bloxel - DualContourModification.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -27,50 +27,26 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
 namespace Bloxel.Engine.DataStructures
 {
-    public struct GridPoint
+    public enum DualContourModification : byte
     {
-        public static GridPoint Full = new GridPoint(0, 1.0f);
-        public static GridPoint Empty = new GridPoint(0, -1.0f);
-
-        private byte _blockType;
-        private Density _density;
-        private ByteBitfield _metaData;
-
-        public GridPoint(byte blockType, float density)
-        {
-            _blockType = blockType;
-            _density = new Density(density);
-
-            _metaData = new ByteBitfield(0);
-        }
-
-        public void Set(int index, byte b, int length)
-        {
-            _metaData.Set(index, b, length);
-        }
-
-        public byte Get(int index, int length)
-        {
-            return _metaData.Get(index, length);
-        }
-
-        public byte Type { get { return _blockType; } }
-
-        public float Density
-        {
-            get { return _density.ToSingle(); }
-            set
-            {
-                Contract.Assert(value >= -1.0f && value <= 1.0f);
-
-                _density.Set(value);
-            }
-        }
+        /// <summary>
+        /// Describes a natural modification.  The gradient vector should be calculated with a suitable ITerrainGradientFunction.
+        /// </summary>
+        NATURAL = 0,
+        /// <summary>
+        /// Describes a modification that is intended to create a cube.
+        /// </summary>
+        CUBE = 1,
+        SLANT_15 = 2,
+        SLANT_30 = 3,
+        SLANT_45 = 4,
+        SLANT_60 = 5,
+        SLANT_75 = 6,
+        SPHERE = 7,
     }
 }

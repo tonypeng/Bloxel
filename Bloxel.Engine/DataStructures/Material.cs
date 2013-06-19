@@ -32,7 +32,7 @@ using System.Text;
 
 namespace Bloxel.Engine.DataStructures
 {
-    public enum BlockType : byte
+    public enum Material : byte
     {
         None = 0,
         Grass = 1,
