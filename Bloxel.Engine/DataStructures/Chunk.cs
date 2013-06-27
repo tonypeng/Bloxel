@@ -54,6 +54,8 @@ namespace Bloxel.Engine.DataStructures
         private VertexBuffer _vertexBuffer;
         private IndexBuffer _indexBuffer;
 
+        private ChunkState _state;
+
         private int _width, _height, _length;
         private BoundingBox _boundingBox;
 
@@ -106,6 +108,8 @@ namespace Bloxel.Engine.DataStructures
             get { return _boundingBox; }
         }
 
+        public ChunkState State { get { return _state; } }
+
         public Chunk(World world, Vector3I position, int width, int height, int length)
         {
             Contract.Assert(width > 0);
@@ -133,9 +137,39 @@ namespace Bloxel.Engine.DataStructures
             return _world.PointAt(x + _position.X, y + _position.Y, z + _position.Z);
         }
 
-        public void SetPoint(int x, int y, int z, GridPoint gp)
+        public void SetPointLocal(int x, int y, int z, GridPoint gp, bool suppressRebuild=false)
         {
             _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)] = gp;
+
+            if(!suppressRebuild)
+                MarkDataOutOfSync();
+        }
+
+        public void SetPoint(int x, int y, int z, GridPoint gp, bool suppressRebuild=false)
+        {
+            _world.SetPoint(x + _position.X, y + _position.Y, z + _position.Z, gp, suppressRebuild);
+        }
+
+        public void MarkDataOutOfSync()
+        {
+            _state = ChunkState.DataOutOfSync;
+
+            _world.ChunkManager.EnqueueChunkForBuild(this);
+        }
+
+        public void MarkChunkBuilding()
+        {
+            _state = ChunkState.Building;
+        }
+
+        public void MarkChunkLighting()
+        {
+            _state = ChunkState.Lighting;
+        }
+
+        public void MarkDataInSync()
+        {
+            _state = ChunkState.Ready;
         }
     }
 }

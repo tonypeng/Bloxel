@@ -51,6 +51,9 @@ namespace Bloxel.Engine.Core
         private int _worldWidth, _worldHeight, _worldLength;
         private Chunk[] _chunks;
 
+        private Queue<Chunk> _buildQueue;
+        private Queue<Chunk> _postProcessQueue;
+
         public IChunkGenerator ChunkGenerator { get { return _chunkGenerator; } set { _chunkGenerator = value; } }
         public IChunkSystem ChunkSystem { get { return _chunkSystem; } set { _chunkSystem = value; } }
 
@@ -78,6 +81,9 @@ namespace Bloxel.Engine.Core
             _worldLength = worldLength;
 
             _chunks = new Chunk[worldWidth * worldHeight * worldLength];
+
+            _buildQueue = new Queue<Chunk>();
+            _postProcessQueue = new Queue<Chunk>();
 
             _chunkSystem = null;
         }
@@ -137,9 +143,32 @@ namespace Bloxel.Engine.Core
             }
         }
 
+        public void EnqueueChunkForBuild(Chunk c)
+        {
+            if (!_buildQueue.Contains(c))
+                _buildQueue.Enqueue(c);
+        }
+
         public void Update(Vector3 cameraPosition)
         {
             Contract.Assert(_chunkSystem != null);
+
+            while (_buildQueue.Count > 0)
+            {
+                Chunk c = _buildQueue.Dequeue();
+
+                // WARNING THIS IS ONLY A QUICK FIX
+                _chunkSystem.Builder.Build(c);
+
+                _postProcessQueue.Enqueue(c);
+            }
+
+            while (_postProcessQueue.Count > 0)
+            {
+                Chunk c = _postProcessQueue.Dequeue();
+
+                _chunkSystem.Builder.PostProcess(c);
+            }
         }
 
         public void Render()

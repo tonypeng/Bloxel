@@ -5,7 +5,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bloxel.Engine", "Bloxel.Eng
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "Playground\Playground\Playground.csproj", "{AC384627-9AFD-4FEB-89A3-DCE55F10165B}"
 EndProject
-Project("{96E2B04D-8817-42C6-938A-82C39BA4D311}") = "PlaygroundContent", "Playground\PlaygroundContent\PlaygroundContent.contentproj", "{558491C5-622C-4439-8F3A-781D9F07BBDA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlaygroundContent", "Playground\PlaygroundContent\PlaygroundContent.contentproj", "{558491C5-622C-4439-8F3A-781D9F07BBDA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{C71C6029-C3CF-4B4B-8BFE-F751CCEB83A3}"
 EndProject

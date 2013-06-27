@@ -51,6 +51,11 @@ namespace Bloxel.Engine.Input
             _instance = new Input(game);
         }
 
+        public static void Destroy()
+        {
+            _instance = null;
+        }
+
         private Game _game;
 
         private KeyboardState _prevKeyboardState;

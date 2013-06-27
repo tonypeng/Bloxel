@@ -46,6 +46,11 @@ namespace Bloxel.Engine.Core
         private CameraManager _camManager;
         private IChunkManager _chunks;
 
+        private ChunkRendererDebugOptions _debugOptions;
+
+        private RasterizerState _debugRasterizerState;
+        private RasterizerState _rasterizerState;
+
         public ColoredChunkRenderer(EngineConfiguration config, ContentLibrary contentLibrary, GraphicsDevice device, CameraManager cameraManager, IChunkManager chunkManager)
         {
             _device = device;
@@ -55,33 +60,20 @@ namespace Bloxel.Engine.Core
             _camManager = cameraManager;
             _chunks = chunkManager;
 
+            _debugOptions = ChunkRendererDebugOptions.NONE;
+
             basicEffect = contentLibrary.BasicEffect;
+
+            _debugRasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.None, FillMode = Microsoft.Xna.Framework.Graphics.FillMode.WireFrame };
+            _rasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.CullCounterClockwiseFace };
+        }
+
+        public void ToggleDebugMode(ChunkRendererDebugOptions debugFlags)
+        {
+            _debugOptions ^= debugFlags;
         }
 
         public void RenderAll()
-        {
-            for (int x = _chunks.MinimumX; x <= _chunks.MaximumX; x++)
-            {
-                for (int y = _chunks.MinimumY; y <= _chunks.MaximumY; y++)
-                {
-                    for (int z = _chunks.MinimumZ; z <= _chunks.MaximumZ; z++)
-                    {
-                        Chunk c = _chunks[x, y, z];
-
-                        // do we even need to render this?
-                        //if (!_camManager.MainCamera.ViewFrustrum.Intersects(c.BoundingBox))
-                        //    continue;
-
-                        if (c.VertexBuffer == null || c.IndexBuffer == null)
-                            continue;
-
-                        Render(c);
-                    }
-                }
-            }
-        }
-
-        public void Render(Chunk c)
         {
             // back up values we're going to change
             BlendState preBlendstate = _device.BlendState;
@@ -90,9 +82,100 @@ namespace Bloxel.Engine.Core
             // restore stuff that spritebatch messes up
             _device.BlendState = BlendState.Opaque;
             _device.DepthStencilState = DepthStencilState.Default;
-            _device.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.None, FillMode = Microsoft.Xna.Framework.Graphics.FillMode.WireFrame };
-            _device.RasterizerState = RasterizerState.CullNone;
-            _device.RasterizerState = new RasterizerState() { CullMode = Microsoft.Xna.Framework.Graphics.CullMode.CullCounterClockwiseFace };
+            _device.RasterizerState = _debugOptions.HasFlag(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME) ? _debugRasterizerState : _rasterizerState;
+
+            _terrainColorEffect.CurrentTechnique = _terrainColorEffect.Techniques["Solid"];
+
+            _terrainColorEffect.Parameters["xWorld"].SetValue(Matrix.Identity);
+            _terrainColorEffect.Parameters["xView"].SetValue(_camManager.MainCamera.View);
+            _terrainColorEffect.Parameters["xProjection"].SetValue(_camManager.MainCamera.Projection);
+            _terrainColorEffect.Parameters["CameraPosition"].SetValue(_camManager.MainCamera.Position);
+
+            _terrainColorEffect.Parameters["FogBegin"].SetValue(48f);
+            _terrainColorEffect.Parameters["FogEnd"].SetValue(160);
+            _terrainColorEffect.Parameters["FogColor"].SetValue(Color.LightGray.ToVector4());
+
+            _terrainColorEffect.Parameters["LightDirection"].SetValue(new Vector3(0.5f, -1f, 0.5f));
+            _terrainColorEffect.Parameters["LightDirection2"].SetValue(new Vector3(-0.5f, -1f, -0.5f));
+
+            foreach (EffectPass pass in _terrainColorEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+
+                for (int x = _chunks.MinimumX; x <= _chunks.MaximumX; x++)
+                {
+                    for (int y = _chunks.MinimumY; y <= _chunks.MaximumY; y++)
+                    {
+                        for (int z = _chunks.MinimumZ; z <= _chunks.MaximumZ; z++)
+                        {
+                            Chunk c = _chunks[x, y, z];
+
+                            if (c.VertexBuffer == null || c.IndexBuffer == null)
+                                continue;
+
+                            // do we even need to render this?
+                            if (!_camManager.MainCamera.ViewFrustrum.Intersects(c.BoundingBox))
+                                continue;
+
+                            _device.SetVertexBuffer(c.VertexBuffer);
+                            _device.Indices = c.IndexBuffer;
+
+                            _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, c.VertexBuffer.VertexCount, 0, c.IndexBuffer.IndexCount / 3);
+                        }
+                    }
+                }
+            }
+
+            if (_debugOptions.HasFlag(ChunkRendererDebugOptions.DEBUG_DRAW_NORMALS))
+            {
+                for (int x = _chunks.MinimumX; x <= _chunks.MaximumX; x++)
+                {
+                    for (int y = _chunks.MinimumY; y <= _chunks.MaximumY; y++)
+                    {
+                        for (int z = _chunks.MinimumZ; z <= _chunks.MaximumZ; z++)
+                        {
+                            Chunk c = _chunks[x, y, z];
+
+                            if (c.NormalsVertexBuffer == null) continue;
+
+                            // do we even need to render this?
+                            if (!_camManager.MainCamera.ViewFrustrum.Intersects(c.BoundingBox))
+                                continue;
+
+                            basicEffect.VertexColorEnabled = true;
+                            basicEffect.World = Matrix.Identity;
+                            basicEffect.View = _camManager.MainCamera.View;
+                            basicEffect.Projection = _camManager.MainCamera.Projection;
+                            basicEffect.LightingEnabled = false;
+
+                            foreach (EffectPass pass in basicEffect.CurrentTechnique.Passes)
+                            {
+                                pass.Apply();
+
+                                _device.SetVertexBuffer(c.NormalsVertexBuffer);
+                                _device.DrawPrimitives(PrimitiveType.LineList, 0, c.NormalsVertexBuffer.VertexCount / 2);
+                            }
+                        }
+                    }
+                }
+            }
+
+            _device.BlendState = preBlendstate;
+            _device.DepthStencilState = preDepthStencilState;
+        }
+
+        public void Render(Chunk c)
+        {
+            if (c.VertexBuffer == null || c.IndexBuffer == null) return;
+
+            // back up values we're going to change
+            BlendState preBlendstate = _device.BlendState;
+            DepthStencilState preDepthStencilState = _device.DepthStencilState;
+
+            // restore stuff that spritebatch messes up
+            _device.BlendState = BlendState.Opaque;
+            _device.DepthStencilState = DepthStencilState.Default;
+            _device.RasterizerState = _debugOptions.HasFlag(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME) ? _debugRasterizerState : _rasterizerState;
 
             _terrainColorEffect.CurrentTechnique = _terrainColorEffect.Techniques["Solid"];
 

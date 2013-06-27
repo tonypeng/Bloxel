@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - DualContouringMetadataIndex.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -32,36 +32,17 @@ using System.Text;
 
 namespace Bloxel.Engine.DataStructures
 {
-    /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
-    /// </summary>
-    public struct Density
+    public enum DualContouringMetadataIndex : byte
     {
-        private short _density;
-
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
-        {
-            _density = density;
-        }
-
-        public void Set(float f)
-        {
-            _density = (short)(f * 32767f);
-        }
-
-        public float ToSingle()
-        {
-            return _density / 32767f;
-        }
-
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
-        }
+        Normal_XPositive_X = 0,
+        Normal_XPositive_Y = 1,
+        Normal_XPositive_Z = 2,
+        Normal_YPositive_X = 3,
+        Normal_YPositive_Y = 4,
+        Normal_YPositive_Z = 5,
+        Normal_ZPositive_X = 6,
+        Normal_ZPositive_Y = 7,
+        Normal_ZPositive_Z = 8,
+        Length = 9
     }
 }

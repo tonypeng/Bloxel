@@ -57,6 +57,8 @@ namespace Bloxel.Engine.Core
         void GenerateChunks();
         void BuildAllChunks();
 
+        void EnqueueChunkForBuild(Chunk c);
+
         void Update(Vector3 cameraPosition);
 
         void Render();

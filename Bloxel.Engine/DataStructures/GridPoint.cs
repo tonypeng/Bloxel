@@ -31,6 +31,8 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
+using Microsoft.Xna.Framework;
+
 namespace Bloxel.Engine.DataStructures
 {
     public struct GridPoint
@@ -38,29 +40,54 @@ namespace Bloxel.Engine.DataStructures
         public static GridPoint Full = new GridPoint(0, 1.0f);
         public static GridPoint Empty = new GridPoint(0, -1.0f);
 
-        private byte _blockType;
+        private byte _material;
         private Density _density;
-        private ByteBitfield _metaData;
+        private byte[] _metadata;
 
-        public GridPoint(byte blockType, float density)
+        private Vector3 _XPositive, _YPositive, _ZPositive;
+
+        public GridPoint(GridPoint other)
+            : this(other, other._metadata.Length)
+        { }
+
+        public GridPoint(GridPoint other, int metaDataLength)
         {
-            _blockType = blockType;
+            _material = other._material;
+            _density = other._density;
+
+            _metadata = new byte[metaDataLength];
+
+            for (int i = 0; i < other._metadata.Length && i < metaDataLength; i++)
+            {
+                _metadata[i] = other._metadata[i];
+            }
+
+            _XPositive = other.XPositiveNormal;
+            _YPositive = other.YPositiveNormal;
+            _ZPositive = other.ZPositiveNormal;
+        }
+
+        public GridPoint(byte material, float density)
+            : this(material, density, 0)
+        { }
+
+        public GridPoint(byte material, float density, int metaDataLength)
+        {
+            Contract.Assert(metaDataLength >= 0);
+
+            _material = material;
             _density = new Density(density);
 
-            _metaData = new ByteBitfield(0);
+            _metadata = new byte[metaDataLength];
+
+            _XPositive = _YPositive = _ZPositive = Vector3.Zero;
         }
 
-        public void Set(int index, byte b, int length)
-        {
-            _metaData.Set(index, b, length);
-        }
+        public Vector3 XPositiveNormal { get { return _XPositive; } set { _XPositive = value; } }
+        public Vector3 YPositiveNormal { get { return _YPositive; } set { _YPositive = value; } }
+        public Vector3 ZPositiveNormal { get { return _ZPositive; } set { _ZPositive = value; } }
 
-        public byte Get(int index, int length)
-        {
-            return _metaData.Get(index, length);
-        }
-
-        public byte Type { get { return _blockType; } }
+        public byte Material { get { return _material; } }
 
         public float Density
         {
@@ -72,5 +99,7 @@ namespace Bloxel.Engine.DataStructures
                 _density.Set(value);
             }
         }
+
+        public byte[] Metadata { get { return _metadata; } }
     }
 }

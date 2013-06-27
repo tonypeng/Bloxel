@@ -42,11 +42,17 @@ namespace Bloxel.Engine.Core
         public BasicEffect BasicEffect;
         public Effect TerrainColorEffect;
 
+        // textures
+        public Texture2D DummyPixel;
+
         public void Load(GraphicsDevice device, ContentManager Content)
         {
             BasicEffect = new BasicEffect(device);
 
             TerrainColorEffect = Content.Load<Effect>("Effects/TerrainColor");
+
+            DummyPixel = new Texture2D(device, 1, 1);
+            DummyPixel.SetData<Color>(new Color[] { Color.White });
         }
     }
 }

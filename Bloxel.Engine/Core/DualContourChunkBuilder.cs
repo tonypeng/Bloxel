@@ -144,6 +144,7 @@ namespace Bloxel.Engine.Core
         private World _world;
 
         private Dictionary<Chunk, List<VertexPositionNormalColor>> _vertices;
+        private Dictionary<Chunk, List<VertexPositionNormalColor>> _meshVertices;
         private Dictionary<Chunk, List<VertexPositionColor>> _normalVertices;
         private Dictionary<Chunk, Dictionary<Vector3I, short>> _positionToIndex;
         private Dictionary<Chunk, List<short>> _indices;
@@ -169,6 +170,7 @@ namespace Bloxel.Engine.Core
             _world = world;
 
             _vertices = new Dictionary<Chunk, List<VertexPositionNormalColor>>();
+            _meshVertices = new Dictionary<Chunk, List<VertexPositionNormalColor>>();
             _indices = new Dictionary<Chunk, List<short>>();
             _positionToIndex = new Dictionary<Chunk, Dictionary<Vector3I, short>>();
             _intersectingEdges = new Dictionary<Chunk, HashSet<Edge>>();
@@ -183,9 +185,12 @@ namespace Bloxel.Engine.Core
 
         public void Build(Chunk c)
         {
+            c.MarkChunkBuilding();
+
             if (!_vertices.ContainsKey(c))
             {
                 _vertices.Add(c, new List<VertexPositionNormalColor>());
+                _meshVertices.Add(c, new List<VertexPositionNormalColor>());
                 _indices.Add(c, new List<short>());
                 _positionToIndex.Add(c, new Dictionary<Vector3I, short>());
                 _intersectingEdges.Add(c, new HashSet<Edge>());
@@ -193,12 +198,21 @@ namespace Bloxel.Engine.Core
                 _borderEdges.Add(c, new HashSet<Edge>());
                 _neededBorderPositions.Add(c, new HashSet<Vector3I>());
             }
+            else
+            {
+                _vertices[c].Clear();
+                _meshVertices[c].Clear();
+                _normalVertices[c].Clear();
+                _indices[c].Clear();
+                _intersectingEdges[c].Clear();
+                _positionToIndex[c].Clear();
+            }
 
             _triangles = 0;
 
             BuildVertices(c);
 
-            Console.WriteLine("{0} triangles.", _triangles);
+            //Console.WriteLine("{0} triangles.", _triangles);
         }
 
         public void PostProcess(Chunk c)
@@ -209,11 +223,16 @@ namespace Bloxel.Engine.Core
             // this ensures that we don't create more quads than necessary.
 
             List<VertexPositionNormalColor> vertices = _vertices[c];
+            List<VertexPositionNormalColor> meshVertices = _meshVertices[c];
+            List<short> meshIndices = _indices[c];
             Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
             HashSet<Vector3I> neededBorderPositions = _neededBorderPositions[c];
 
             foreach (Vector3I pos in neededBorderPositions)
             {
+                if (!_world.InBounds((c.Position + pos).ToVector3()))
+                    continue;
+
                 Chunk otherChunk = _world.ChunkAt(c.Position.X + pos.X, c.Position.Y + pos.Y, c.Position.Z + pos.Z);
 
                 Vector3I otherChunkLocalPos = new Vector3I(pos.X % otherChunk.Width, pos.Y % otherChunk.Height, pos.Z % otherChunk.Length);
@@ -234,7 +253,7 @@ namespace Bloxel.Engine.Core
 
                 for (int i = 0; i < cubes.Length; i++)
                 {
-                    if (cubes[i].X < 0 || cubes[i].Y < 0 || cubes[i].Z < 0)
+                    if (cubes[i].X < 0 || cubes[i].Y < 0 || cubes[i].Z < 0 || !_world.InBounds((c.Position + cubes[i]).ToVector3()))
                     {
                         invalid = true;
                         break;
@@ -242,6 +261,9 @@ namespace Bloxel.Engine.Core
                 }
 
                 if (invalid) continue;
+
+                // used to determine which config the face is in; this is used to know which indices refer to the same vertex below
+                bool indicesConfig = false;
 
                 // TODO: possible degenerate triangles (0 area)
                 switch (d)
@@ -255,6 +277,7 @@ namespace Bloxel.Engine.Core
                         indices[3] = positionToIndex[cubes[0]];
                         indices[4] = positionToIndex[cubes[3]];
                         indices[5] = positionToIndex[cubes[2]];
+                        indicesConfig = true;
                         break;
                     case Direction.XIncreasing:
                     case Direction.ZIncreasing:
@@ -265,6 +288,7 @@ namespace Bloxel.Engine.Core
                         indices[3] = positionToIndex[cubes[0]];
                         indices[4] = positionToIndex[cubes[2]];
                         indices[5] = positionToIndex[cubes[3]];
+                        indicesConfig = false;
                         break;
                 }
 
@@ -306,35 +330,39 @@ namespace Bloxel.Engine.Core
                 VertexPositionNormalColor vertex0 = vertices[indices[0]];
                 VertexPositionNormalColor vertex1 = vertices[indices[1]];
                 VertexPositionNormalColor vertex2 = vertices[indices[2]];
-
-                vertex0.Normal += normal1;
-                vertex1.Normal += normal1;
-                vertex2.Normal += normal1;
-
-                vertices[indices[0]] = vertex0;
-                vertices[indices[1]] = vertex1;
-                vertices[indices[2]] = vertex2;
-
                 VertexPositionNormalColor vertex3 = vertices[indices[3]];
                 VertexPositionNormalColor vertex4 = vertices[indices[4]];
                 VertexPositionNormalColor vertex5 = vertices[indices[5]];
 
-                vertex3.Normal += normal2;
-                vertex4.Normal += normal2;
-                vertex5.Normal += normal2;
+if (indicesConfig)
+                {
+                    vertex0.Normal += normal1 + normal2;
+                    vertex1.Normal += normal1;
+                    vertex2.Normal += normal1 + normal2;
+                    vertex5.Normal += normal2;
 
-                vertices[indices[3]] = vertex3;
-                vertices[indices[4]] = vertex4;
-                vertices[indices[5]] = vertex5;
+                    AddIndices(meshIndices, meshVertices.Count, 0, 1, 2, 0, 2, 3);
+                    AddVertices(meshVertices, vertex0, vertex1, vertex2, vertex5);
+                }
+                else
+                {
+                    vertex0.Normal += normal1 + normal2;
+                    vertex1.Normal += normal1 + normal2;
+                    vertex2.Normal += normal1;
+                    vertex4.Normal += normal2;
 
-                AddIndices(c, indices);
+                    AddIndices(meshIndices, meshVertices.Count, 0, 1, 2, 0, 3, 1);
+                    AddVertices(meshVertices, vertex0, vertex1, vertex2, vertex4);
+                }
             }
 
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
             BuildBuffers(c);
             sw.Stop();
-            Console.WriteLine("BuildBuffers(): {0}ms", sw.ElapsedMilliseconds);
+            //Console.WriteLine("BuildBuffers(): {0}ms", sw.ElapsedMilliseconds);
+
+            c.MarkDataInSync();
         }
 
         private void BuildVertices(Chunk c)
@@ -344,12 +372,12 @@ namespace Bloxel.Engine.Core
             sw.Start();
             CreateMinimizingVertices(c);
             sw.Stop();
-            Console.WriteLine("CreateMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
+            //Console.WriteLine("CreateMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
 
             sw.Restart();
             ConnectMinimizingVertices(c);
             sw.Stop();
-            Console.WriteLine("ConnectMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
+            //Console.WriteLine("ConnectMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
         }
 
         private void CreateMinimizingVertices(Chunk c)
@@ -378,6 +406,8 @@ namespace Bloxel.Engine.Core
         {
             Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
             List<VertexPositionNormalColor> vertices = _vertices[c];
+            List<VertexPositionNormalColor> meshVertices = _meshVertices[c];
+            List<short> meshIndices = _indices[c];
 
             foreach (Edge e in _intersectingEdges[c])
             {
@@ -412,6 +442,9 @@ namespace Bloxel.Engine.Core
 
                 if (invalid) continue;
 
+                // used to determine which config the face is in; this is used to know which indices refer to the same vertex below
+                bool indicesConfig = false;
+
                 // TODO: possible degenerate triangles (0 area)
                 switch (d)
                 {
@@ -424,6 +457,8 @@ namespace Bloxel.Engine.Core
                         indices[3] = positionToIndex[cubes[0]];
                         indices[4] = positionToIndex[cubes[3]];
                         indices[5] = positionToIndex[cubes[2]];
+
+                        indicesConfig = true; // duplicates at 0,3 and 2,4
                         break;
                     case Direction.XIncreasing:
                     case Direction.ZIncreasing:
@@ -434,6 +469,8 @@ namespace Bloxel.Engine.Core
                         indices[3] = positionToIndex[cubes[0]];
                         indices[4] = positionToIndex[cubes[2]];
                         indices[5] = positionToIndex[cubes[3]];
+
+                        indicesConfig = false; // duplicates at 0,3, and 1,5
                         break;
                 }
 
@@ -480,28 +517,30 @@ namespace Bloxel.Engine.Core
                 VertexPositionNormalColor vertex0 = vertices[indices[0]];
                 VertexPositionNormalColor vertex1 = vertices[indices[1]];
                 VertexPositionNormalColor vertex2 = vertices[indices[2]];
-
-                vertex0.Normal += normal1;
-                vertex1.Normal += normal1;
-                vertex2.Normal += normal1;
-
-                vertices[indices[0]] = vertex0;
-                vertices[indices[1]] = vertex1;
-                vertices[indices[2]] = vertex2;
-
                 VertexPositionNormalColor vertex3 = vertices[indices[3]];
                 VertexPositionNormalColor vertex4 = vertices[indices[4]];
                 VertexPositionNormalColor vertex5 = vertices[indices[5]];
 
-                vertex3.Normal += normal2;
-                vertex4.Normal += normal2;
-                vertex5.Normal += normal2;
+                if (indicesConfig)
+                {
+                    vertex0.Normal += normal1 + normal2;
+                    vertex1.Normal += normal1;
+                    vertex2.Normal += normal1 + normal2;
+                    vertex5.Normal += normal2;
 
-                vertices[indices[3]] = vertex3;
-                vertices[indices[4]] = vertex4;
-                vertices[indices[5]] = vertex5;
+                    AddIndices(meshIndices, meshVertices.Count, 0, 1, 2, 0, 2, 3);
+                    AddVertices(meshVertices, vertex0, vertex1, vertex2, vertex5);
+                }
+                else
+                {
+                    vertex0.Normal += normal1 + normal2;
+                    vertex1.Normal += normal1 + normal2;
+                    vertex2.Normal += normal1;
+                    vertex4.Normal += normal2;
 
-                AddIndices(c, indices);
+                    AddIndices(meshIndices, meshVertices.Count, 0, 1, 2, 0, 3, 1);
+                    AddVertices(meshVertices, vertex0, vertex1, vertex2, vertex4);
+                }
             }
         }
 
@@ -520,7 +559,7 @@ namespace Bloxel.Engine.Core
             GridPoint XYMaxZMax = c.PointAt(lX, lY + 1, lZ + 1);
             GridPoint XMaxYMaxZMax = c.PointAt(lX + 1, lY + 1, lZ + 1);
 
-            Tuple<HermiteData, Edge[]> data = CubeInfo(localPosition, XYZ, XMaxYZ, XYMaxZ, XYZMax, XMaxYMaxZ, XMaxYZMax, XYMaxZMax, XMaxYMaxZMax);
+            Tuple<HermiteData, Edge[]> data = CubeInfo(c, localPosition, XYZ, XMaxYZ, XYMaxZ, XYZMax, XMaxYMaxZ, XMaxYZMax, XYMaxZMax, XMaxYMaxZMax);
 
             HermiteData hermite = data.Item1;
 
@@ -551,7 +590,7 @@ namespace Bloxel.Engine.Core
             //_positionToQEF.Add(localPosition, new CubeInfo(minimizingVertex, data.Item2));
         }
 
-        private Tuple<HermiteData, Edge[]> CubeInfo(Vector3I min, GridPoint XYZ, GridPoint XMaxYZ, GridPoint XYMaxZ, GridPoint XYZMax, GridPoint XMaxYMaxZ, GridPoint XMaxYZMax, GridPoint XYMaxZMax, GridPoint XMaxYMaxZMax)
+        private Tuple<HermiteData, Edge[]> CubeInfo(Chunk c, Vector3I min, GridPoint XYZ, GridPoint XMaxYZ, GridPoint XYMaxZ, GridPoint XYZMax, GridPoint XMaxYMaxZ, GridPoint XMaxYZMax, GridPoint XYMaxZMax, GridPoint XMaxYMaxZMax)
         {
             HermiteData hermiteData = new HermiteData(new List<Vector3>(), new List<Vector3>());
 
@@ -642,24 +681,59 @@ namespace Bloxel.Engine.Core
                     corner1Point.Density,
                     corner2Point.Density);
 
-                GridPoint subIsoValue = (corner2Point.Density < _minimumSolidDensity) ? corner2Point : corner1Point;
+                Vector3I minCorner = Vector3I.Min(corner1, corner2);
+                GridPoint minPoint = (minCorner == corner1) ? corner1Point : corner2Point;
 
-                DualContourModification dcmType = (DualContourModification)(subIsoValue.Get(0, DualContouring.DUAL_CONTOUR_MODIFICATION_BIT_LENGTH));
+                Vector3 naturalNormal = _densityGradientFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
+                Vector3F8 compressedNaturalNormal = new Vector3F8(naturalNormal);
 
-                Vector3 normal = Vector3.Zero;
+                Vector3 normal = naturalNormal;
 
-                switch (dcmType)
+                switch (dir)
                 {
-                    case DualContourModification.NATURAL:
-                        normal = _densityGradientFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
+                    case Direction.XIncreasing:
+                    case Direction.XDecreasing:
+                        normal = minPoint.XPositiveNormal;
+
+                        if (normal == Vector3.Zero)
+                        {
+                            GridPoint withNormal = new GridPoint(minPoint);
+
+                            withNormal.XPositiveNormal = naturalNormal;
+
+                            c.SetPoint(minCorner.X, minCorner.Y, minCorner.Z, withNormal, true);
+                        }
                         break;
-                    case DualContourModification.CUBE:
-                        normal = delta.ToVector3();
+                    case Direction.YIncreasing:
+                    case Direction.YDecreasing:
+                        normal = minPoint.YPositiveNormal;
+
+                        if (normal == Vector3.Zero)
+                        {
+                            GridPoint withNormal = new GridPoint(minPoint);
+
+                            withNormal.YPositiveNormal = naturalNormal;
+
+                            c.SetPoint(minCorner.X, minCorner.Y, minCorner.Z, withNormal, true);
+                        }
                         break;
-                    case DualContourModification.SPHERE:
-                        normal = -1 * delta.ToVector3();
+                    case Direction.ZIncreasing:
+                    case Direction.ZDecreasing:
+                        normal = minPoint.ZPositiveNormal;
+
+                        if (normal == Vector3.Zero)
+                        {
+                            GridPoint withNormal = new GridPoint(minPoint);
+
+                            withNormal.ZPositiveNormal = naturalNormal;
+
+                            c.SetPoint(minCorner.X, minCorner.Y, minCorner.Z, withNormal, true);
+                        }
                         break;
                 }
+
+                if (normal == Vector3.Zero)
+                    normal = naturalNormal;
 
                 normal.Normalize();
 
@@ -712,10 +786,10 @@ namespace Bloxel.Engine.Core
             if (_vertices[c].Count <= 0 || _indices[c].Count <= 0)
                 return;
 
-            VertexPositionNormalColor[] vertices = new VertexPositionNormalColor[_vertices[c].Count];
+            VertexPositionNormalColor[] vertices = new VertexPositionNormalColor[_meshVertices[c].Count];
             short[] indices = new short[_indices[c].Count];
 
-            _vertices[c].CopyTo(vertices);
+            _meshVertices[c].CopyTo(vertices);
             _indices[c].CopyTo(indices);
             
             NormalizeNormals(c, vertices);
@@ -762,9 +836,18 @@ namespace Bloxel.Engine.Core
             }
         }
 
-        private void AddIndices(Chunk c, params short[] indices)
+        private void AddIndices(List<short> meshIndices, int offset, params int[] indices)
         {
-            _indices[c].AddRange(indices);
+            if (meshIndices.Capacity < meshIndices.Count + indices.Length)
+                meshIndices.Capacity = meshIndices.Count + indices.Length;
+
+            for (int i = 0; i < indices.Length; i++)
+                meshIndices.Add((short)(indices[i] + offset));
+        }
+
+        private void AddVertices(List<VertexPositionNormalColor> meshVertices, params VertexPositionNormalColor[] vertices)
+        {
+            meshVertices.AddRange(vertices);
         }
     }
 }

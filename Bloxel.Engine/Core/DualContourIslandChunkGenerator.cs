@@ -36,17 +36,19 @@ using Bloxel.Engine.Utilities;
 
 namespace Bloxel.Engine.Core
 {
-    public class IslandChunkGenerator : IChunkGenerator, ITerrainGradientFunction
+    public class DualContourIslandChunkGenerator : IChunkGenerator, ITerrainGradientFunction
     {
         int _worldMaxHeight;
         NoiseGenerator _noiseGenerator;
         bool _isCubic;
 
-        public IslandChunkGenerator(int worldMaxHeight, NoiseGenerator noiseGenerator)
+        public bool RequiresPostProcess { get { return true; } }
+
+        public DualContourIslandChunkGenerator(int worldMaxHeight, NoiseGenerator noiseGenerator)
             : this(worldMaxHeight, noiseGenerator, false)
         { }
 
-        public IslandChunkGenerator(int worldMaxHeight, NoiseGenerator noiseGenerator, bool cubic)
+        public DualContourIslandChunkGenerator(int worldMaxHeight, NoiseGenerator noiseGenerator, bool cubic)
         {
             _worldMaxHeight = worldMaxHeight;
             _noiseGenerator = noiseGenerator;
@@ -71,6 +73,8 @@ namespace Bloxel.Engine.Core
                     bool canSeeSun = true;
                     bool nextBlockIsGrass = false;
 
+                    Vector3F8 normal = Vector3F8.Zero;
+
                     for (int y = c.Height - 1; y >= 0; y--)
                     {
                         GridPoint g;
@@ -79,28 +83,24 @@ namespace Bloxel.Engine.Core
 
                         if (worldY > groundHeight)
                         {
-                            g = GridPoint.Empty;
+                            g = new GridPoint(GridPoint.Empty, (int)DualContouringMetadataIndex.Length);
                         }
                         else if (worldY == groundHeightFloor)
                         {
                             float delta = groundHeight - groundHeightFloor;
 
-                            g = _isCubic ? GridPoint.Full : new GridPoint(0, delta / (1 - delta));
+                            g = _isCubic ? new GridPoint(GridPoint.Full, (int)DualContouringMetadataIndex.Length) : new GridPoint(0, delta / (1 - delta), (int)DualContouringMetadataIndex.Length);
                         }
                         else if (worldY > lowerGroundHeight)
                         {
-                            g = GridPoint.Full;
+                            g = new GridPoint(GridPoint.Full, (int)DualContouringMetadataIndex.Length);
                         }
                         else
                         {
-                            g = GridPoint.Full;
+                            g = new GridPoint(GridPoint.Full, (int)DualContouringMetadataIndex.Length);
                         }
 
-                        DualContourModification dcm = _isCubic ? DualContourModification.CUBE : DualContourModification.NATURAL;
-
-                        g.Set(0, (byte)dcm, DualContouring.DUAL_CONTOUR_MODIFICATION_BIT_LENGTH);
-
-                        c.SetPoint(x, y, z, g);
+                        c.SetPointLocal(x, y, z, g, true);
                     }
                 }
             }
@@ -112,7 +112,7 @@ namespace Bloxel.Engine.Core
 
             //return lowerGround + theNoise * 0.75f;
 
-            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.01f, 0.5f, 0.5f, 3, null) + 1f) * 0.4f;
+            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.02f, 0.5f, 0.5f, 3, null) + 1f) * 0.4f;
 
             return (theNoise * ((float)_worldMaxHeight / 2f)) + lowerGround;
         }
@@ -122,7 +122,7 @@ namespace Bloxel.Engine.Core
             int minGroundHeight = _worldMaxHeight / 4;
             int minGroundDepth = (int)(_worldMaxHeight * 0.3f);
 
-            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.05f, 0.5f, 0.7f, 3, null) + 1f) * 0.4f;
+            float theNoise = (_noiseGenerator.GenerateNoise(worldX, worldZ, 0.1f, 0.5f, 0.7f, 3, null) + 1f) * 0.4f;
 
             return (theNoise * minGroundDepth + minGroundHeight);
         }

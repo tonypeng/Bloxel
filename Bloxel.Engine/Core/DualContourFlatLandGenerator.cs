@@ -1,5 +1,5 @@
 ﻿/*
- * Bloxel - Density.cs
+ * Bloxel - FlatLandGenerator.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
@@ -30,38 +30,37 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Bloxel.Engine.DataStructures
+using Microsoft.Xna.Framework;
+
+using Bloxel.Engine.DataStructures;
+using Bloxel.Engine.Utilities;
+
+namespace Bloxel.Engine.Core
 {
-    /// <summary>
-    /// Provides a one-byte density value, in increments of (1/255), or ~0.004
-    /// </summary>
-    public struct Density
+    public class DualContourFlatLandGenerator : IChunkGenerator, ITerrainGradientFunction
     {
-        private short _density;
-
-        public Density(float density)
-            : this((short)(density * 32767f))
-        { }
-
-        public Density(short density)
+        public void Generate(Chunk c)
         {
-            _density = density;
+            for (int x = 0; x < c.Width; x++)
+            {
+                for (int z = 0; z < c.Length; z++)
+                {
+                    for (int y = 0; y < c.Height; y++)
+                    {
+                        int worldHeight = c.Position.Y + y;
+
+                        if (worldHeight < 15)
+                            c.SetPointLocal(x, y, z, GridPoint.Full, true);
+                        else
+                            c.SetPointLocal(x, y, z, GridPoint.Empty, true);
+                    }
+                }
+            }
         }
 
-        public void Set(float f)
+        public Vector3 df(float x, float y, float z)
         {
-            _density = (short)(f * 32767f);
-        }
-
-        public float ToSingle()
-        {
-            return _density / 32767f;
-        }
-
-        public short PackedDensity
-        {
-            get { return _density; }
-            set { _density = value; }
+            return Vector3.Up;
         }
     }
 }

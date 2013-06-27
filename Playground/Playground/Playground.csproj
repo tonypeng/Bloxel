@@ -94,8 +94,9 @@
       <Name>Bloxel.Engine</Name>
     </ProjectReference>
     <ProjectReference Include="..\PlaygroundContent\PlaygroundContent.contentproj">
-      <Name>PlaygroundContent</Name>
+      <Name>PlaygroundContent %28Content%29</Name>
       <XnaReferenceType>Content</XnaReferenceType>
+      <Project>{558491C5-622C-4439-8F3A-781D9F07BBDA}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

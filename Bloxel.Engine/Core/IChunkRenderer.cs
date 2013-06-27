@@ -36,6 +36,8 @@ namespace Bloxel.Engine.Core
 {
     public interface IChunkRenderer
     {
+        void ToggleDebugMode(ChunkRendererDebugOptions debugFlags);
+
         void RenderAll();
         void Render(Chunk c);
     }

@@ -118,12 +118,19 @@ namespace Playground
             int worldChunkHeight = 8;
 
             // 113188818 - test seed
-            IslandChunkGenerator icg = new IslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
+            DualContourIslandChunkGenerator icg = new DualContourIslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
+            DualContourFlatLandGenerator flg = new DualContourFlatLandGenerator();
 
-            _world = new World(config);
-            _chunkManager = new StaticThreadedChunkManager(_world, 5, worldChunkHeight, 5);
-            _chunkManager.ChunkSystem = new DualContourColoredChunkSystem(GraphicsDevice, contentLibrary, _chunkManager, camManager, _world, icg, 0.0f);
-            _chunkManager.ChunkGenerator = icg;
+            IChunkGenerator generator;
+            ITerrainGradientFunction grad;
+
+            generator = icg;
+            grad = icg;
+
+            _world = new World(config, camManager);
+            _chunkManager = new StaticThreadedChunkManager(_world, 2, worldChunkHeight, 2);
+            _chunkManager.ChunkSystem = new DualContourColoredChunkSystem(GraphicsDevice, contentLibrary, _chunkManager, camManager, _world, grad, 0.0f);
+            _chunkManager.ChunkGenerator = generator;
 
             _world.ChunkManager = _chunkManager;
 
@@ -135,12 +142,26 @@ namespace Playground
         {
         }
 
+        float timeout = 0;
+        bool toggleDebugWireframe = false;
+        bool toggleDebugNormals = false;
+
         protected override void Update(GameTime gameTime)
         {
             Input.Get().Update();
 
             if (Input.Get().IsKeyDown(Keys.Escape, true))
                 _paused = !_paused;
+
+            if (Input.Get().IsKeyDown(Keys.F2, true))
+                toggleDebugWireframe = true;
+            else
+                toggleDebugWireframe = false;
+
+            if (Input.Get().IsKeyDown(Keys.F3, true))
+                toggleDebugNormals = true;
+            else
+                toggleDebugNormals = false;
 
             int centerX = GraphicsDevice.Viewport.Width / 2;
             int centerY = GraphicsDevice.Viewport.Height / 2;
@@ -213,6 +234,122 @@ namespace Playground
 
             cam.Update();
 
+            // block picking
+            if (Input.Get().IsLeftMouseButtonDown() && (timeout -= (float)gameTime.ElapsedGameTime.TotalSeconds) <= 0)
+            {
+                for (float f = 0; f < 32f; f += 0.1f)
+                {
+                    Vector3 pos = cam.Position + cam.Forward * f;
+
+                    int rx = (int)(pos.X + 0.5f);
+                    int ry = (int)(pos.Y + 0.5f);
+                    int rz = (int)(pos.Z + 0.5f);
+
+                    GridPoint gridPoint = _world.PointAt(rx, ry, rz);
+
+                    if (gridPoint.Density >= 0.0f)
+                    {
+                        Console.WriteLine("Point picked at ({0}, {1}, {2}) with density {3}", rx, ry, rz, gridPoint.Density);
+
+                        GridPoint selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        // modify the normals and density
+                        selected.Density = -1.0f;
+                        // make the vectors point towards the point
+                        selected.XPositiveNormal = new Vector3(-1, 0, 0);
+                        selected.YPositiveNormal = new Vector3(0, -1, 0);
+                        selected.ZPositiveNormal = new Vector3(0, 0, -1);
+
+                        _world.SetPoint(rx, ry, rz, selected);
+
+                        Console.WriteLine("{0}", selected.Density);
+
+                        gridPoint = _world.PointAt(rx, ry - 1, rz);
+
+                        if (gridPoint.Density > 0)
+                        {
+                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                            selected.Density = 1.0f;
+                            selected.YPositiveNormal = new Vector3(0, 1, 0);
+
+                            Console.WriteLine("Y-: {0}", selected.Density);
+
+                            _world.SetPoint(rx, ry - 1, rz, selected);
+                        }
+
+                        gridPoint = _world.PointAt(rx - 1, ry, rz);
+
+                        if (gridPoint.Density > 0)
+                        {
+                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                            selected.Density = 1.0f;
+                            selected.XPositiveNormal = new Vector3(1, 0, 0);
+
+                            Console.WriteLine("X-: {0}", selected.Density);
+
+                            _world.SetPoint(rx - 1, ry, rz, selected);
+                        }
+
+                        gridPoint = _world.PointAt(rx, ry, rz - 1);
+
+                        if (gridPoint.Density > 0)
+                        {
+                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                            selected.Density = 1.0f;
+                            selected.ZPositiveNormal = new Vector3(0, 0, 1);
+
+                            Console.WriteLine("Z-: {0}", selected.Density);
+
+                            _world.SetPoint(rx, ry, rz - 1, selected);
+                        }
+
+                        gridPoint = _world.PointAt(rx, ry, rz + 1);
+
+                        if (gridPoint.Density > 0)
+                        {
+                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                            selected.Density = 1.0f;
+
+                            Console.WriteLine("Z+: {0}", selected.Density);
+
+                            _world.SetPoint(rx, ry, rz + 1, selected);
+                        }
+
+                        gridPoint = _world.PointAt(rx, ry + 1, rz);
+
+                        if (gridPoint.Density > 0)
+                        {
+                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                            selected.Density = 1.0f;
+
+                            Console.WriteLine("Y+: {0}", selected.Density);
+
+                            _world.SetPoint(rx, ry + 1, rz, selected);
+                        }
+
+                        gridPoint = _world.PointAt(rx + 1, ry, rz);
+
+                        if (gridPoint.Density > 0)
+                        {
+                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                            selected.Density = 1.0f;
+
+                            Console.WriteLine("X+: {0}", selected.Density);
+
+                            _world.SetPoint(rx + 1, ry, rz, selected);
+                        }
+
+                        timeout = 0.01f;
+
+                        if (Input.Get().IsKeyDown(Keys.Space))
+                            timeout = 0.2f;
+
+                        break;
+                    }
+                }
+            }
+
+            _world.Update(gameTime);
+
             _fpsCounter.Update(gameTime);
 
             base.Update(gameTime);
@@ -221,6 +358,12 @@ namespace Playground
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
+
+            if (toggleDebugWireframe)
+                _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME);
+
+            if (toggleDebugNormals)
+                _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_NORMALS);
 
             _chunkManager.ChunkSystem.Renderer.RenderAll();
 
@@ -247,6 +390,8 @@ namespace Playground
 
                 spriteBatch.DrawString(font, "Paused", new Vector2(GraphicsDevice.Viewport.Width - dim.X - 2, 2), Color.White);
             }
+
+            spriteBatch.Draw(contentLibrary.DummyPixel, new Rectangle(GraphicsDevice.Viewport.Width / 2 - 1, GraphicsDevice.Viewport.Height / 2 - 1, 2, 2), Color.White);
 
             spriteBatch.End();
 

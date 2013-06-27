@@ -36,6 +36,7 @@ using Microsoft.Xna.Framework;
 
 using Bloxel.Engine.Async;
 using Bloxel.Engine.DataStructures;
+using Bloxel.Engine.Input;
 using Bloxel.Engine.Utilities;
 
 namespace Bloxel.Engine.UnitTests
@@ -147,31 +148,43 @@ namespace Bloxel.Engine.UnitTests
                 string pos2str = Console.ReadLine();
                 Console.WriteLine("Enter normal 2:");
                 string normal2str = Console.ReadLine();
+                Console.WriteLine("Enter position 3:");
+                string pos3str = Console.ReadLine();
+                Console.WriteLine("Enter normal 3:");
+                string normal3str = Console.ReadLine();
 
                 string[] pos1parts = pos1str.Split(',');
                 string[] normal1parts = normal1str.Split(',');
                 string[] pos2parts = pos2str.Split(',');
                 string[] normal2parts = normal2str.Split(',');
+                string[] pos3parts = pos3str.Split(',');
+                string[] normal3parts = normal3str.Split(',');
 
                 Vector3 pos1 = new Vector3(Single.Parse(pos1parts[0].Trim()), Single.Parse(pos1parts[1].Trim()), Single.Parse(pos1parts[2].Trim()));
                 Vector3 normal1 = new Vector3(Single.Parse(normal1parts[0].Trim()), Single.Parse(normal1parts[1].Trim()), Single.Parse(normal1parts[2].Trim()));
                 Vector3 pos2 = new Vector3(Single.Parse(pos2parts[0].Trim()), Single.Parse(pos2parts[1].Trim()), Single.Parse(pos2parts[2].Trim()));
                 Vector3 normal2 = new Vector3(Single.Parse(normal2parts[0].Trim()), Single.Parse(normal2parts[1].Trim()), Single.Parse(normal2parts[2].Trim()));
+                Vector3 pos3 = new Vector3(Single.Parse(pos3parts[0].Trim()), Single.Parse(pos3parts[1].Trim()), Single.Parse(pos3parts[2].Trim()));
+                Vector3 normal3 = new Vector3(Single.Parse(normal3parts[0].Trim()), Single.Parse(normal3parts[1].Trim()), Single.Parse(normal3parts[2].Trim()));
                 normal1.Normalize();
                 normal2.Normalize();
+                normal3.Normalize();
 
                 Console.WriteLine("Position 1: {0}", pos1);
                 Console.WriteLine("Normal 1: {0}", normal1);
                 Console.WriteLine("Position 2: {0}", pos2);
                 Console.WriteLine("Normal 2: {0}", normal2);
+                Console.WriteLine("Position 3: {0}", pos3);
+                Console.WriteLine("Normal 3: {0}", normal3);
 
                 hermite.Add(pos1, normal1);
                 hermite.Add(pos2, normal2);
+                //hermite.Add(pos3, normal3);
 
                 Stopwatch sw = new Stopwatch();
 
                 sw.Start();
-                Vector3 pos = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.001f, 25);
+                Vector3 pos = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.001f, 100);
                 sw.Stop();
 
                 Console.WriteLine("Out: {0}", pos);
@@ -215,9 +228,27 @@ namespace Bloxel.Engine.UnitTests
             Console.ReadLine();
         }
 
+        static void TestFloat8()
+        {
+            float f1 = (float)Math.Sqrt(0.2f);
+            float f2 = -1f * (float)Math.Sqrt(0.3f);
+
+            Float8 f8 = f1;
+
+            Console.WriteLine("Value: {0}", f8.ToSingle());
+            Console.WriteLine("Error: {0}", Math.Abs(f1 - f8));
+
+            Float8 another = f2;
+
+            Console.WriteLine("Value: {0}", another.ToSingle());
+            Console.WriteLine("Error: {0}", Math.Abs(f2 - another));
+
+            Console.ReadLine();
+        }
+
         public static void Main(String[] args)
         {
-            TestZeroVectorNormalize();
+            TestSchmitzVertexFromHermiteData();
         }
     }
 }
