@@ -1,28 +1,10 @@
 ﻿/*
- * Bloxel - Block.cs
+ * Bloxel - GridPoint.cs
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
+ * This file is subject to the terms and conditions defined in the
+ * file 'LICENSE.txt', which is part of this source code package.
  */
 
 using System;
@@ -68,7 +50,7 @@ namespace Bloxel.Engine.DataStructures
         }
 
         public GridPoint(byte material, float density)
-            : this(material, density, 0)
+            : this(material, density, 1)
         { }
 
         public GridPoint(byte material, float density, int metaDataLength)
@@ -100,6 +82,10 @@ namespace Bloxel.Engine.DataStructures
             }
         }
 
+        /// <summary>
+        /// Gets the array of metadata for this gridpoint.
+        /// </summary>
+        /// <remarks>When Metadata is initialized with a non-zero length and CPU lighting is enabled, index 0 is reserved for lighting.</remarks>
         public byte[] Metadata { get { return _metadata; } }
     }
 }

@@ -3,26 +3,8 @@
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
+ * This file is subject to the terms and conditions defined in the
+ * file 'LICENSE.txt', which is part of this source code package.
  */
 
 using System;
@@ -38,21 +20,41 @@ namespace Bloxel.Engine.Core
 {
     public class ContentLibrary
     {
+        private readonly string BL_DIR = "Bloxel";
+
         // effects
         public BasicEffect BasicEffect;
         public Effect TerrainColorEffect;
+        public Effect ClearEffect;
+        public Effect DirectionalLightEffect;
+        public Effect PointLightEffect;
+        public Effect RenderCombineEffect;
+        public Effect RenderGBufferColorEffect;
+        public Effect SSAOEffect;
 
         // textures
         public Texture2D DummyPixel;
+
+        // fonts
+        public SpriteFont UIFontTiny;
 
         public void Load(GraphicsDevice device, ContentManager Content)
         {
             BasicEffect = new BasicEffect(device);
 
-            TerrainColorEffect = Content.Load<Effect>("Effects/TerrainColor");
+            TerrainColorEffect = Content.Load<Effect>(BL_DIR + "/Effects/TerrainColor");
 
             DummyPixel = new Texture2D(device, 1, 1);
             DummyPixel.SetData<Color>(new Color[] { Color.White });
+
+            ClearEffect = Content.Load<Effect>(BL_DIR + "/Effects/Deferred/Clear");
+            DirectionalLightEffect = Content.Load<Effect>(BL_DIR + "/Effects/Deferred/DirectionalLight");
+            PointLightEffect = Content.Load<Effect>(BL_DIR + "/Effects/Deferred/PointLight");
+            RenderCombineEffect = Content.Load<Effect>(BL_DIR + "/Effects/Deferred/RenderCombine");
+            RenderGBufferColorEffect = Content.Load<Effect>(BL_DIR + "/Effects/Deferred/RenderGBufferColor");
+            SSAOEffect = Content.Load<Effect>(BL_DIR + "/Effects/Deferred/SSAO");
+
+            UIFontTiny = Content.Load<SpriteFont>(BL_DIR + "/Fonts/UIFontTiny");
         }
     }
 }

@@ -3,6 +3,7 @@ struct VertexInput
 	float4 Position	: POSITION0;
 	float3 Normal : NORMAL0;
 	float4 Color	: COLOR0;
+	float Light		: COLOR1;
 };
 
 struct PixelInput
@@ -23,6 +24,8 @@ float FogBegin;
 float FogEnd;
 float4 FogColor;
 
+float AmbientLight = 0.1;
+
 float3 LightDirection;
 float3 LightDirection2;
 
@@ -40,7 +43,7 @@ PixelInput SolidVertexShader(VertexInput input)
 	
 	float normalComponent = min(saturate(saturate(dot(normal, -LightDirection)) + 0.4), saturate(saturate(dot(normal, -LightDirection2)) + 0.4));
 		
-	output.Light = normalComponent;
+	output.Light = saturate(input.Light * normalComponent + AmbientLight);
 
 	output.Color = input.Color;
 

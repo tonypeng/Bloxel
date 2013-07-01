@@ -17,6 +17,10 @@ using Bloxel.Engine.DataStructures;
 using Bloxel.Engine.Input;
 using Bloxel.Engine.Utilities;
 
+using Bloxel.Engine.DeferredRendering;
+
+using Playground.Generator;
+
 namespace Playground
 {
     public class Playground : BloxelHost
@@ -113,6 +117,8 @@ namespace Playground
             config.ChunkHeight = 16;
             config.ChunkLength = 16;
 
+            config.CPULightingEnabled = true;
+
             config.RenderDistance = 5;
 
             int worldChunkHeight = 8;
@@ -120,6 +126,7 @@ namespace Playground
             // 113188818 - test seed
             DualContourIslandChunkGenerator icg = new DualContourIslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
             DualContourFlatLandGenerator flg = new DualContourFlatLandGenerator();
+            DebuggerGenerator dg = new DebuggerGenerator();
 
             IChunkGenerator generator;
             ITerrainGradientFunction grad;
@@ -128,9 +135,10 @@ namespace Playground
             grad = icg;
 
             _world = new World(config, camManager);
-            _chunkManager = new StaticThreadedChunkManager(_world, 2, worldChunkHeight, 2);
+            _chunkManager = new StaticThreadedChunkManager(config, _world, 3, worldChunkHeight, 3);
             _chunkManager.ChunkSystem = new DualContourColoredChunkSystem(GraphicsDevice, contentLibrary, _chunkManager, camManager, _world, grad, 0.0f);
             _chunkManager.ChunkGenerator = generator;
+            _chunkManager.LightManager = new FloodfillLightManager(_chunkManager, config, worldChunkHeight);
 
             _world.ChunkManager = _chunkManager;
 
@@ -143,8 +151,8 @@ namespace Playground
         }
 
         float timeout = 0;
-        bool toggleDebugWireframe = false;
-        bool toggleDebugNormals = false;
+        Vector3I pickedPos = Vector3I.One * -1;
+        Vector3I sidePickedPos = Vector3I.One * -1;
 
         protected override void Update(GameTime gameTime)
         {
@@ -153,16 +161,20 @@ namespace Playground
             if (Input.Get().IsKeyDown(Keys.Escape, true))
                 _paused = !_paused;
 
-            if (Input.Get().IsKeyDown(Keys.F2, true))
-                toggleDebugWireframe = true;
-            else
-                toggleDebugWireframe = false;
+            if (Input.Get().IsKeyDown(Keys.F2, true)) _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME);
+            if (Input.Get().IsKeyDown(Keys.F3, true)) _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_NORMALS);
+            if (Input.Get().IsKeyDown(Keys.F4, true)) _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_RENDERTARGETS);
 
-            if (Input.Get().IsKeyDown(Keys.F3, true))
-                toggleDebugNormals = true;
-            else
-                toggleDebugNormals = false;
+            if (Input.Get().IsKeyDown(Keys.F5, true))
+            {
+                if (pickedPos != Vector3I.One * -1)
+                {
+                    Chunk c = _world.ChunkAt(pickedPos.X, pickedPos.Y, pickedPos.Z);
 
+                    _chunkManager.EnqueueChunkForBuild(c);
+                }
+            }
+            
             int centerX = GraphicsDevice.Viewport.Width / 2;
             int centerY = GraphicsDevice.Viewport.Height / 2;
 
@@ -209,7 +221,7 @@ namespace Playground
             {
                 moveVector -= Vector3.Up * 0.5f;
             }
-            if (Input.Get().IsKeyDown(Keys.Tab))
+            if (!Input.Get().IsKeyDown(Keys.Tab))
             {
                 moveVector *= 0.125f;
             }
@@ -234,117 +246,218 @@ namespace Playground
 
             cam.Update();
 
+            pickedPos = Vector3I.One * -1;
+            sidePickedPos = Vector3I.One * -1;
+
+            Vector3I lastEmptyBlock = new Vector3I((int)(cam.Position.X + 0.5f), (int)(cam.Position.Y + 0.5f), (int)(cam.Position.Z + 0.5f));
+
             // block picking
-            if (Input.Get().IsLeftMouseButtonDown() && (timeout -= (float)gameTime.ElapsedGameTime.TotalSeconds) <= 0)
+            for (float f = 0; f < 32f; f += 0.1f)
             {
-                for (float f = 0; f < 32f; f += 0.1f)
+                Vector3 pos = cam.Position + cam.Forward * f;
+
+                int rx = (int)(pos.X + 0.5f);
+                int ry = (int)(pos.Y + 0.5f);
+                int rz = (int)(pos.Z + 0.5f);
+
+                GridPoint gridPoint = _world.PointAt(rx, ry, rz);
+
+                if (gridPoint.Density >= 0.0f)
                 {
-                    Vector3 pos = cam.Position + cam.Forward * f;
+                    pickedPos = new Vector3I(rx, ry, rz);
+                    sidePickedPos = lastEmptyBlock;
+                    break;
+                }
+                else
+                {
+                    lastEmptyBlock = new Vector3I(rx, ry, rz);
+                }
+            }
 
-                    int rx = (int)(pos.X + 0.5f);
-                    int ry = (int)(pos.Y + 0.5f);
-                    int rz = (int)(pos.Z + 0.5f);
+            if (pickedPos == Vector3I.One * -1)
+                sidePickedPos = pickedPos;
 
-                    GridPoint gridPoint = _world.PointAt(rx, ry, rz);
+            if ((timeout -= (float)gameTime.ElapsedGameTime.TotalSeconds) <= 0 && Input.Get().IsLeftMouseButtonDown() && pickedPos != Vector3I.One * -1)
+            {
+                int rx = pickedPos.X;
+                int ry = pickedPos.Y;
+                int rz = pickedPos.Z;
 
-                    if (gridPoint.Density >= 0.0f)
+                GridPoint gridPoint = _world.PointAt(rx, ry, rz);
+
+                if (gridPoint.Density >= 0.0f)
+                {
+                    pickedPos = new Vector3I(rx, ry, rz);
+
+                    GridPoint selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                    // modify the normals and density
+                    selected.Density = -1.0f;
+                    // make the vectors point towards the point
+                    selected.XPositiveNormal = new Vector3(-1, 0, 0);
+                    selected.YPositiveNormal = new Vector3(0, -1, 0);
+                    selected.ZPositiveNormal = new Vector3(0, 0, -1);
+
+                    _world.SetPoint(rx, ry, rz, selected);
+
+                    gridPoint = _world.PointAt(rx, ry - 1, rz);
+
+                    if (gridPoint.Density >= 0)
                     {
-                        Console.WriteLine("Point picked at ({0}, {1}, {2}) with density {3}", rx, ry, rz, gridPoint.Density);
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = 1.0f;
+                        selected.YPositiveNormal = new Vector3(0, 1, 0);
 
-                        GridPoint selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                        // modify the normals and density
+                        _world.SetPoint(rx, ry - 1, rz, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx - 1, ry, rz);
+
+                    if (gridPoint.Density >= 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = 1.0f;
+                        selected.XPositiveNormal = new Vector3(1, 0, 0);
+
+                        _world.SetPoint(rx - 1, ry, rz, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx, ry, rz - 1);
+
+                    if (gridPoint.Density >= 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = 1.0f;
+                        selected.ZPositiveNormal = new Vector3(0, 0, 1);
+
+                        _world.SetPoint(rx, ry, rz - 1, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx, ry, rz + 1);
+
+                    if (gridPoint.Density >= 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = 1.0f;
+
+                        _world.SetPoint(rx, ry, rz + 1, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx, ry + 1, rz);
+
+                    if (gridPoint.Density >= 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = 1.0f;
+
+                        _world.SetPoint(rx, ry + 1, rz, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx + 1, ry, rz);
+
+                    if (gridPoint.Density >= 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = 1.0f;
+
+                        _world.SetPoint(rx + 1, ry, rz, selected);
+                    }
+
+                    timeout = 0.2f;
+
+                    if (Input.Get().IsKeyDown(Keys.Space))
+                        timeout = 0.01f;
+                }
+            }
+
+            if (timeout <= 0 && Input.Get().IsRightMouseButtonDown() && sidePickedPos != Vector3I.One * -1)
+            {
+                int rx = sidePickedPos.X;
+                int ry = sidePickedPos.Y;
+                int rz = sidePickedPos.Z;
+
+                GridPoint gridPoint = _world.PointAt(rx, ry, rz);
+
+                if (gridPoint.Density < 0.0f)
+                {
+                    pickedPos = new Vector3I(rx, ry, rz);
+
+                    GridPoint selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                    // modify the normals and density
+                    selected.Density = 1.0f;
+                    // make the vectors point away from the point
+                    selected.XPositiveNormal = new Vector3(1, 0, 0);
+                    selected.YPositiveNormal = new Vector3(0, 1, 0);
+                    selected.ZPositiveNormal = new Vector3(0, 0, 1);
+
+                    _world.SetPoint(rx, ry, rz, selected);
+
+                    gridPoint = _world.PointAt(rx, ry - 1, rz);
+
+                    if (gridPoint.Density < 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
                         selected.Density = -1.0f;
-                        // make the vectors point towards the point
-                        selected.XPositiveNormal = new Vector3(-1, 0, 0);
                         selected.YPositiveNormal = new Vector3(0, -1, 0);
+
+                        _world.SetPoint(rx, ry - 1, rz, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx - 1, ry, rz);
+
+                    if (gridPoint.Density < 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = -1.0f;
+                        selected.XPositiveNormal = new Vector3(-1, 0, 0);
+
+                        _world.SetPoint(rx - 1, ry, rz, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx, ry, rz - 1);
+
+                    if (gridPoint.Density < 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = -1.0f;
                         selected.ZPositiveNormal = new Vector3(0, 0, -1);
 
-                        _world.SetPoint(rx, ry, rz, selected);
-
-                        Console.WriteLine("{0}", selected.Density);
-
-                        gridPoint = _world.PointAt(rx, ry - 1, rz);
-
-                        if (gridPoint.Density > 0)
-                        {
-                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                            selected.Density = 1.0f;
-                            selected.YPositiveNormal = new Vector3(0, 1, 0);
-
-                            Console.WriteLine("Y-: {0}", selected.Density);
-
-                            _world.SetPoint(rx, ry - 1, rz, selected);
-                        }
-
-                        gridPoint = _world.PointAt(rx - 1, ry, rz);
-
-                        if (gridPoint.Density > 0)
-                        {
-                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                            selected.Density = 1.0f;
-                            selected.XPositiveNormal = new Vector3(1, 0, 0);
-
-                            Console.WriteLine("X-: {0}", selected.Density);
-
-                            _world.SetPoint(rx - 1, ry, rz, selected);
-                        }
-
-                        gridPoint = _world.PointAt(rx, ry, rz - 1);
-
-                        if (gridPoint.Density > 0)
-                        {
-                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                            selected.Density = 1.0f;
-                            selected.ZPositiveNormal = new Vector3(0, 0, 1);
-
-                            Console.WriteLine("Z-: {0}", selected.Density);
-
-                            _world.SetPoint(rx, ry, rz - 1, selected);
-                        }
-
-                        gridPoint = _world.PointAt(rx, ry, rz + 1);
-
-                        if (gridPoint.Density > 0)
-                        {
-                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                            selected.Density = 1.0f;
-
-                            Console.WriteLine("Z+: {0}", selected.Density);
-
-                            _world.SetPoint(rx, ry, rz + 1, selected);
-                        }
-
-                        gridPoint = _world.PointAt(rx, ry + 1, rz);
-
-                        if (gridPoint.Density > 0)
-                        {
-                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                            selected.Density = 1.0f;
-
-                            Console.WriteLine("Y+: {0}", selected.Density);
-
-                            _world.SetPoint(rx, ry + 1, rz, selected);
-                        }
-
-                        gridPoint = _world.PointAt(rx + 1, ry, rz);
-
-                        if (gridPoint.Density > 0)
-                        {
-                            selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
-                            selected.Density = 1.0f;
-
-                            Console.WriteLine("X+: {0}", selected.Density);
-
-                            _world.SetPoint(rx + 1, ry, rz, selected);
-                        }
-
-                        timeout = 0.01f;
-
-                        if (Input.Get().IsKeyDown(Keys.Space))
-                            timeout = 0.2f;
-
-                        break;
+                        _world.SetPoint(rx, ry, rz - 1, selected);
                     }
+
+                    gridPoint = _world.PointAt(rx, ry, rz + 1);
+
+                    if (gridPoint.Density < 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = -1.0f;
+
+                        _world.SetPoint(rx, ry, rz + 1, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx, ry + 1, rz);
+
+                    if (gridPoint.Density < 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = -1.0f;
+
+                        _world.SetPoint(rx, ry + 1, rz, selected);
+                    }
+
+                    gridPoint = _world.PointAt(rx + 1, ry, rz);
+
+                    if (gridPoint.Density < 0)
+                    {
+                        selected = new GridPoint(gridPoint, (int)DualContouringMetadataIndex.Length);
+                        selected.Density = -1.0f;
+
+                        _world.SetPoint(rx + 1, ry, rz, selected);
+                    }
+
+                    timeout = 0.2f;
+
+                    if (Input.Get().IsKeyDown(Keys.Space))
+                        timeout = 0.01f;
                 }
             }
 
@@ -358,12 +471,6 @@ namespace Playground
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
-
-            if (toggleDebugWireframe)
-                _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME);
-
-            if (toggleDebugNormals)
-                _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_NORMALS);
 
             _chunkManager.ChunkSystem.Renderer.RenderAll();
 
@@ -379,10 +486,40 @@ namespace Playground
                 }
             }*/
 
+            if (pickedPos != Vector3I.One * -1)
+            {
+                BoundingBox picked = new BoundingBox(pickedPos.ToVector3() - 0.55f * Vector3.One, pickedPos.ToVector3() + 0.55f * Vector3.One);
+                BoundingBoxRenderer.Render(GraphicsDevice, picked, camManager.MainCamera);
+
+                BoundingBox sidePicked = new BoundingBox(sidePickedPos.ToVector3() - 0.55f * Vector3.One, sidePickedPos.ToVector3() + 0.55f * Vector3.One);
+                BoundingBoxRenderer.Render(GraphicsDevice, sidePicked, Color.Blue, camManager.MainCamera);
+
+                BoundingBox b1 = new BoundingBox(pickedPos.ToVector3(), pickedPos.ToVector3() + Vector3.One);
+                BoundingBox b2 = new BoundingBox(pickedPos.ToVector3() + Vector3.Left, pickedPos.ToVector3() + Vector3.Up + Vector3.Backward);
+                BoundingBox b3 = new BoundingBox(pickedPos.ToVector3() + Vector3.Forward, pickedPos.ToVector3() + Vector3.Up + Vector3.Right);
+                BoundingBox b4 = new BoundingBox(pickedPos.ToVector3() + Vector3.Left + Vector3.Forward, pickedPos.ToVector3() + Vector3.Up);
+
+                BoundingBox b5 = new BoundingBox(pickedPos.ToVector3() + Vector3.Down, pickedPos.ToVector3() + Vector3.Right + Vector3.Backward);
+                BoundingBox b6 = new BoundingBox(pickedPos.ToVector3() + Vector3.Left + Vector3.Down, pickedPos.ToVector3() + Vector3.Backward);
+                BoundingBox b7 = new BoundingBox(pickedPos.ToVector3() + Vector3.Forward + Vector3.Down, pickedPos.ToVector3() + Vector3.Right);
+                BoundingBox b8 = new BoundingBox(pickedPos.ToVector3() + Vector3.Left + Vector3.Forward + Vector3.Down, pickedPos.ToVector3());
+
+                /*
+                BoundingBoxRenderer.Render(GraphicsDevice, b1, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b2, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b3, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b4, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b5, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b6, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b7, Color.Red, camManager.MainCamera);
+                BoundingBoxRenderer.Render(GraphicsDevice, b8, Color.Red, camManager.MainCamera);*/
+            }
+
             spriteBatch.Begin();
 
             spriteBatch.DrawString(font, "Target: " + cam.Target, Vector2.One * 2f, Color.White);
             spriteBatch.DrawString(font, "Position: " + cam.Position, new Vector2(2, 2 + font.LineSpacing + 2), Color.White);
+            spriteBatch.DrawString(font, "Selected: " + ((pickedPos == Vector3I.One * -1) ? "None" : pickedPos.ToString()), new Vector2(2, 2 + 2 * font.LineSpacing + 2), Color.White);
 
             if (_paused)
             {

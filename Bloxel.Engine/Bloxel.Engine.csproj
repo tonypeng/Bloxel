@@ -5,7 +5,7 @@
     <ProjectTypeGuids>{6D335F3A-9D43-41b4-9D22-F6F17C4BE596};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Bloxel.Engine</RootNamespace>
     <AssemblyName>Bloxel.Engine</AssemblyName>
@@ -74,6 +74,7 @@
     <Compile Include="Core\DualContourChunkBuilder.cs" />
     <Compile Include="Core\DualContourColoredChunkSystem.cs" />
     <Compile Include="Core\DualContourFlatLandGenerator.cs" />
+    <Compile Include="Core\FloodfillLightManager.cs" />
     <Compile Include="Core\IChunkGenerator.cs" />
     <Compile Include="Core\IDensityFunction.cs" />
     <Compile Include="Core\EngineConfiguration.cs" />
@@ -82,8 +83,10 @@
     <Compile Include="Core\IChunkBuilder.cs" />
     <Compile Include="Core\IChunkRenderer.cs" />
     <Compile Include="Core\IChunkSystem.cs" />
+    <Compile Include="Core\ILightManager.cs" />
     <Compile Include="Core\ITerrainGradientFunction.cs" />
     <Compile Include="Core\DualContourIslandChunkGenerator.cs" />
+    <Compile Include="Core\NoLightingLightManager.cs" />
     <Compile Include="DataStructures\DualContouringMetadataIndex.cs" />
     <Compile Include="DataStructures\DualContourModification.cs" />
     <Compile Include="DataStructures\Float8.cs" />
@@ -109,7 +112,7 @@
     <Compile Include="DataStructures\CubeInfo.cs" />
     <Compile Include="DataStructures\ShortBitfield.cs" />
     <Compile Include="DataStructures\Vector3I.cs" />
-    <Compile Include="DataStructures\VertexPositionNormalColor.cs" />
+    <Compile Include="DataStructures\VertexPositionNormalColorLight.cs" />
     <Compile Include="Extensions\EnumExtensions.cs" />
     <Compile Include="Input\Input.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -121,7 +124,9 @@
     <Compile Include="Utilities\DualContouring.cs" />
     <Compile Include="Utilities\SimplexNoiseGenerator.cs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="LICENSE.txt" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="Bloxel.Engine.licenseheader" />
   </ItemGroup>

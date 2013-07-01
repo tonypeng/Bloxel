@@ -3,26 +3,8 @@
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
+ * This file is subject to the terms and conditions defined in the
+ * file 'LICENSE.txt', which is part of this source code package.
  */
 
 using System;
@@ -43,10 +25,13 @@ namespace Bloxel.Engine.Core
     /// </summary>
     public class StaticThreadedChunkManager : IChunkManager
     {
+        private EngineConfiguration _config;
+
         private World _world;
 
         private IChunkGenerator _chunkGenerator;
         private IChunkSystem _chunkSystem;
+        private ILightManager _lightManager;
 
         private int _worldWidth, _worldHeight, _worldLength;
         private Chunk[] _chunks;
@@ -56,6 +41,7 @@ namespace Bloxel.Engine.Core
 
         public IChunkGenerator ChunkGenerator { get { return _chunkGenerator; } set { _chunkGenerator = value; } }
         public IChunkSystem ChunkSystem { get { return _chunkSystem; } set { _chunkSystem = value; } }
+        public ILightManager LightManager { get { return _lightManager; } set { _lightManager = value; } }
 
         public Chunk this[int x, int y, int z] { get { return Get(x, y, z); } }
 
@@ -68,11 +54,13 @@ namespace Bloxel.Engine.Core
         public int MinimumZ { get { return 0; } }
         public int MaximumZ { get { return _worldLength - 1; } }
 
-        public StaticThreadedChunkManager(World world, int worldWidth, int worldHeight, int worldLength)
+        public StaticThreadedChunkManager(EngineConfiguration config, World world, int worldWidth, int worldHeight, int worldLength)
         {
             Contract.Assert(worldWidth > 0);
             Contract.Assert(worldHeight > 0);
             Contract.Assert(worldLength > 0);
+
+            _config = config;
 
             _world = world;
 
@@ -115,6 +103,24 @@ namespace Bloxel.Engine.Core
         {
             for (int x = 0; x < _worldWidth; x++)
             {
+                for (int z = 0; z < _worldLength; z++)
+                {
+                    if (_config.CPULightingEnabled)
+                        _lightManager.LightChunkColumn(x, z);
+                    else
+                    {
+                        for (int y = 0; y < _worldHeight; y++)
+                        {
+                            int index = ArrayUtil.Convert3DTo1D(x, y, z, _worldLength, _worldHeight);
+
+                            _chunks[index].MarkChunkAwaitingBuild();
+                        }
+                    }
+                }
+            }
+
+            for (int x = 0; x < _worldWidth; x++)
+            {
                 for (int y = 0; y < _worldHeight; y++)
                 {
                     for (int z = 0; z < _worldLength; z++)
@@ -143,21 +149,31 @@ namespace Bloxel.Engine.Core
             }
         }
 
-        public void EnqueueChunkForBuild(Chunk c)
+        public void EnqueueChunkForBuild(params Chunk[] c)
         {
-            if (!_buildQueue.Contains(c))
-                _buildQueue.Enqueue(c);
+            for (int i = 0; i < c.Length; i++)
+            {
+                if (!_buildQueue.Contains(c[i]))
+                    _buildQueue.Enqueue(c[i]);
+            }
         }
 
         public void Update(Vector3 cameraPosition)
         {
             Contract.Assert(_chunkSystem != null);
 
+            //if (_buildQueue.Count > 0)
+            //    Console.WriteLine("{0} chunks in queue.", _buildQueue.Count);
+
             while (_buildQueue.Count > 0)
             {
                 Chunk c = _buildQueue.Dequeue();
 
-                // WARNING THIS IS ONLY A QUICK FIX
+                if (_config.CPULightingEnabled)
+                    _lightManager.LightChunkColumn(c.ChunkSpaceX, c.ChunkSpaceZ);
+                else
+                    c.MarkChunkAwaitingBuild();
+
                 _chunkSystem.Builder.Build(c);
 
                 _postProcessQueue.Enqueue(c);

@@ -22,6 +22,8 @@ namespace Playground.Generator
                     }
                 }
             }
+
+            c.MarkDataOutOfSync(false);
         }
     }
 }

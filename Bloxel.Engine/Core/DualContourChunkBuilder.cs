@@ -3,26 +3,8 @@
  * Copyright (c) 2013 Tony "untitled" Peng
  * <http://www.tonypeng.com/>
  * 
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
+ * This file is subject to the terms and conditions defined in the
+ * file 'LICENSE.txt', which is part of this source code package.
  */
 
 using System;
@@ -143,8 +125,8 @@ namespace Bloxel.Engine.Core
 
         private World _world;
 
-        private Dictionary<Chunk, List<VertexPositionNormalColor>> _vertices;
-        private Dictionary<Chunk, List<VertexPositionNormalColor>> _meshVertices;
+        private Dictionary<Chunk, List<VertexPositionNormalColorLight>> _vertices;
+        private Dictionary<Chunk, List<VertexPositionNormalColorLight>> _meshVertices;
         private Dictionary<Chunk, List<VertexPositionColor>> _normalVertices;
         private Dictionary<Chunk, Dictionary<Vector3I, short>> _positionToIndex;
         private Dictionary<Chunk, List<short>> _indices;
@@ -169,8 +151,8 @@ namespace Bloxel.Engine.Core
 
             _world = world;
 
-            _vertices = new Dictionary<Chunk, List<VertexPositionNormalColor>>();
-            _meshVertices = new Dictionary<Chunk, List<VertexPositionNormalColor>>();
+            _vertices = new Dictionary<Chunk, List<VertexPositionNormalColorLight>>();
+            _meshVertices = new Dictionary<Chunk, List<VertexPositionNormalColorLight>>();
             _indices = new Dictionary<Chunk, List<short>>();
             _positionToIndex = new Dictionary<Chunk, Dictionary<Vector3I, short>>();
             _intersectingEdges = new Dictionary<Chunk, HashSet<Edge>>();
@@ -189,8 +171,8 @@ namespace Bloxel.Engine.Core
 
             if (!_vertices.ContainsKey(c))
             {
-                _vertices.Add(c, new List<VertexPositionNormalColor>());
-                _meshVertices.Add(c, new List<VertexPositionNormalColor>());
+                _vertices.Add(c, new List<VertexPositionNormalColorLight>());
+                _meshVertices.Add(c, new List<VertexPositionNormalColorLight>());
                 _indices.Add(c, new List<short>());
                 _positionToIndex.Add(c, new Dictionary<Vector3I, short>());
                 _intersectingEdges.Add(c, new HashSet<Edge>());
@@ -206,6 +188,8 @@ namespace Bloxel.Engine.Core
                 _indices[c].Clear();
                 _intersectingEdges[c].Clear();
                 _positionToIndex[c].Clear();
+                _borderEdges[c].Clear();
+                _neededBorderPositions[c].Clear();
             }
 
             _triangles = 0;
@@ -216,14 +200,19 @@ namespace Bloxel.Engine.Core
         }
 
         public void PostProcess(Chunk c)
-        {
+        {/*
+            BuildBuffers(c);
+            c.MarkDataInSync();
+
+            return;*/
+
             // after we build the chunk's vertices, we need to stitch the borders.
 
             // each chunk only stiches borders with its XPositive, YPositive, and ZPositive neighbor chunks. (if they aren't null)
             // this ensures that we don't create more quads than necessary.
 
-            List<VertexPositionNormalColor> vertices = _vertices[c];
-            List<VertexPositionNormalColor> meshVertices = _meshVertices[c];
+            List<VertexPositionNormalColorLight> vertices = _vertices[c];
+            List<VertexPositionNormalColorLight> meshVertices = _meshVertices[c];
             List<short> meshIndices = _indices[c];
             Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
             HashSet<Vector3I> neededBorderPositions = _neededBorderPositions[c];
@@ -327,14 +316,14 @@ namespace Bloxel.Engine.Core
 
                 _triangles += 2;
 
-                VertexPositionNormalColor vertex0 = vertices[indices[0]];
-                VertexPositionNormalColor vertex1 = vertices[indices[1]];
-                VertexPositionNormalColor vertex2 = vertices[indices[2]];
-                VertexPositionNormalColor vertex3 = vertices[indices[3]];
-                VertexPositionNormalColor vertex4 = vertices[indices[4]];
-                VertexPositionNormalColor vertex5 = vertices[indices[5]];
+                VertexPositionNormalColorLight vertex0 = vertices[indices[0]];
+                VertexPositionNormalColorLight vertex1 = vertices[indices[1]];
+                VertexPositionNormalColorLight vertex2 = vertices[indices[2]];
+                VertexPositionNormalColorLight vertex3 = vertices[indices[3]];
+                VertexPositionNormalColorLight vertex4 = vertices[indices[4]];
+                VertexPositionNormalColorLight vertex5 = vertices[indices[5]];
 
-if (indicesConfig)
+                if (indicesConfig)
                 {
                     vertex0.Normal += normal1 + normal2;
                     vertex1.Normal += normal1;
@@ -383,7 +372,7 @@ if (indicesConfig)
         private void CreateMinimizingVertices(Chunk c)
         {
             HashSet<Edge> intersectingEdges = _intersectingEdges[c];
-            List<VertexPositionNormalColor> vertices = _vertices[c];
+            List<VertexPositionNormalColorLight> vertices = _vertices[c];
             Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
 
             for (int x = 0; x < c.Width; x++)
@@ -392,9 +381,6 @@ if (indicesConfig)
                 {
                     for (int y = 0; y < c.Height; y++)
                     {
-                        if (x == 1 && y == 0 && z == 15)
-                            Console.WriteLine();
-
                         Vector3I chunkPos = new Vector3I(x, y, z);
                         ProcessBlock(intersectingEdges, vertices, positionToIndex, c, c.PointAt(x, y, z), chunkPos + c.Position, chunkPos);
                     }
@@ -405,8 +391,8 @@ if (indicesConfig)
         private void ConnectMinimizingVertices(Chunk c)
         {
             Dictionary<Vector3I, short> positionToIndex = _positionToIndex[c];
-            List<VertexPositionNormalColor> vertices = _vertices[c];
-            List<VertexPositionNormalColor> meshVertices = _meshVertices[c];
+            List<VertexPositionNormalColorLight> vertices = _vertices[c];
+            List<VertexPositionNormalColorLight> meshVertices = _meshVertices[c];
             List<short> meshIndices = _indices[c];
 
             foreach (Edge e in _intersectingEdges[c])
@@ -514,12 +500,12 @@ if (indicesConfig)
 
                 _triangles += 2;
 
-                VertexPositionNormalColor vertex0 = vertices[indices[0]];
-                VertexPositionNormalColor vertex1 = vertices[indices[1]];
-                VertexPositionNormalColor vertex2 = vertices[indices[2]];
-                VertexPositionNormalColor vertex3 = vertices[indices[3]];
-                VertexPositionNormalColor vertex4 = vertices[indices[4]];
-                VertexPositionNormalColor vertex5 = vertices[indices[5]];
+                VertexPositionNormalColorLight vertex0 = vertices[indices[0]];
+                VertexPositionNormalColorLight vertex1 = vertices[indices[1]];
+                VertexPositionNormalColorLight vertex2 = vertices[indices[2]];
+                VertexPositionNormalColorLight vertex3 = vertices[indices[3]];
+                VertexPositionNormalColorLight vertex4 = vertices[indices[4]];
+                VertexPositionNormalColorLight vertex5 = vertices[indices[5]];
 
                 if (indicesConfig)
                 {
@@ -544,7 +530,7 @@ if (indicesConfig)
             }
         }
 
-        private void ProcessBlock(HashSet<Edge> intersectingEdges, List<VertexPositionNormalColor> vertices, Dictionary<Vector3I, short> positionToIndex, Chunk c, GridPoint min, Vector3I worldPosition, Vector3I localPosition)
+        private void ProcessBlock(HashSet<Edge> intersectingEdges, List<VertexPositionNormalColorLight> vertices, Dictionary<Vector3I, short> positionToIndex, Chunk c, GridPoint min, Vector3I worldPosition, Vector3I localPosition)
         {
             int lX = localPosition.X;
             int lY = localPosition.Y;
@@ -584,7 +570,11 @@ if (indicesConfig)
 
             Vector3 minimizingVertex = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.01f, 25);
 
-            vertices.Add(new VertexPositionNormalColor(c.Position.ToVector3() + minimizingVertex, Vector3.Zero, Color.Green));
+            float light = (XYZ.Metadata[0] + XMaxYZ.Metadata[0] + XYMaxZ.Metadata[0] + XYZMax.Metadata[0] + XMaxYMaxZ.Metadata[0] + XMaxYZMax.Metadata[0] + XYMaxZMax.Metadata[0] + XMaxYMaxZMax.Metadata[0]);
+            light /= 8; // average
+            light /= 15; // out of maximum value of 15
+
+            vertices.Add(new VertexPositionNormalColorLight(c.Position.ToVector3() + minimizingVertex, Vector3.Zero, Color.Green, light));
             positionToIndex.Add(localPosition, (short)(_vertices[c].Count - 1));
 
             //_positionToQEF.Add(localPosition, new CubeInfo(minimizingVertex, data.Item2));
@@ -786,7 +776,7 @@ if (indicesConfig)
             if (_vertices[c].Count <= 0 || _indices[c].Count <= 0)
                 return;
 
-            VertexPositionNormalColor[] vertices = new VertexPositionNormalColor[_meshVertices[c].Count];
+            VertexPositionNormalColorLight[] vertices = new VertexPositionNormalColorLight[_meshVertices[c].Count];
             short[] indices = new short[_indices[c].Count];
 
             _meshVertices[c].CopyTo(vertices);
@@ -806,11 +796,11 @@ if (indicesConfig)
                 if (c.NormalsVertexBuffer != null)
                     c.NormalsVertexBuffer.Dispose();
 
-                c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionNormalColor), vertices.Length, BufferUsage.WriteOnly);
+                c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionNormalColorLight), vertices.Length, BufferUsage.WriteOnly);
                 c.IndexBuffer = new DynamicIndexBuffer(_device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
                 c.NormalsVertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), normal.Length, BufferUsage.WriteOnly);
 
-                c.VertexBuffer.SetData<VertexPositionNormalColor>(vertices);
+                c.VertexBuffer.SetData<VertexPositionNormalColorLight>(vertices);
                 c.IndexBuffer.SetData<short>(indices);
                 c.NormalsVertexBuffer.SetData<VertexPositionColor>(normal);
             }
@@ -822,7 +812,7 @@ if (indicesConfig)
             //_positionToIndex[c].Clear();
         }
 
-        private void NormalizeNormals(Chunk c, VertexPositionNormalColor[] normals)
+        private void NormalizeNormals(Chunk c, VertexPositionNormalColorLight[] normals)
         {
             for (int i = 0; i < normals.Length; i++)
             {
@@ -845,7 +835,7 @@ if (indicesConfig)
                 meshIndices.Add((short)(indices[i] + offset));
         }
 
-        private void AddVertices(List<VertexPositionNormalColor> meshVertices, params VertexPositionNormalColor[] vertices)
+        private void AddVertices(List<VertexPositionNormalColorLight> meshVertices, params VertexPositionNormalColorLight[] vertices)
         {
             meshVertices.AddRange(vertices);
         }
