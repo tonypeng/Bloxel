@@ -44,6 +44,9 @@ namespace Bloxel.Engine.Core
 
                         GridPoint b = new GridPoint(0, value);
                         c.SetPointLocal(x, y, z, b);
+
+                        //GridPoint b = new GridPoint(0, value, (int)DualContouringMetadataIndex.Length);
+                        //c.SetPointLocal(x, y, z, b, true);
                     }
                 }
             }

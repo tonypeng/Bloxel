@@ -230,7 +230,7 @@ namespace Bloxel.Engine.UnitTests
 
         public static void Main(String[] args)
         {
-            TestSchmitzVertexFromHermiteData();
+            TestBitfieldGet();
         }
     }
 }
