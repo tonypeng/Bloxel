@@ -126,19 +126,21 @@ namespace Playground
             // 113188818 - test seed
             DualContourIslandChunkGenerator icg = new DualContourIslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
             DualContourFlatLandGenerator flg = new DualContourFlatLandGenerator();
+            SphereDensityFunction sdf = new SphereDensityFunction(Vector3.One * 8.0f, 1.0f);
+            DensityChunkGenerator dcg = new DensityChunkGenerator(sdf);
             DebuggerGenerator dg = new DebuggerGenerator();
 
             IChunkGenerator generator;
             ITerrainGradientFunction grad;
 
-            generator = icg;
-            grad = icg;
+            generator = dcg;
+            grad = sdf;
 
             _world = new World(config, camManager);
-            _chunkManager = new StaticThreadedChunkManager(config, _world, 3, worldChunkHeight, 3);
+            _chunkManager = new StaticThreadedChunkManager(config, _world, 1, 1, 1);
             _chunkManager.ChunkSystem = new DualContourColoredChunkSystem(GraphicsDevice, contentLibrary, _chunkManager, camManager, _world, grad, 0.0f);
             _chunkManager.ChunkGenerator = generator;
-            _chunkManager.LightManager = new FloodfillLightManager(_chunkManager, config, worldChunkHeight);
+            _chunkManager.LightManager = new FloodfillLightManager(_chunkManager, config, 1);
 
             _world.ChunkManager = _chunkManager;
 

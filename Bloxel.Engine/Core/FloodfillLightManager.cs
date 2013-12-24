@@ -56,6 +56,10 @@ namespace Bloxel.Engine.Core
 
                         for (int y = ch.Height - 1; y >= 0; y--)
                         {
+                            int worldX = ch.Position.X + x;
+                            int worldY = ch.Position.Y + y;
+                            int worldZ = ch.Position.Z + z;
+
                             byte light = 0;
 
                             if (ch.PointAt(x, y, z).Density >= 0.0f)
@@ -65,6 +69,9 @@ namespace Bloxel.Engine.Core
                                 light = 15;
 
                             ch.SetLightLocal(x, y, z, light);
+
+                            if(worldX == 25 && worldZ == 19)
+                                Console.WriteLine("{0},{1},{2}: {3}", worldX, worldY, worldZ, light);
                         }
                     }
                 }

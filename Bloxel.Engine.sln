@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bloxel.Engine.DeferredRendering", "Bloxel.Engine.DeferredRendering\Bloxel.Engine.DeferredRendering.csproj", "{F653DD31-B134-4F1C-846B-5754BD83718C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MeshExtractor", "MeshExtractor\MeshExtractor.csproj", "{6310D366-6554-4A02-818C-DA6D9824D664}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -35,6 +37,10 @@ Global
 		{F653DD31-B134-4F1C-846B-5754BD83718C}.Debug|x86.Build.0 = Debug|x86
 		{F653DD31-B134-4F1C-846B-5754BD83718C}.Release|x86.ActiveCfg = Release|x86
 		{F653DD31-B134-4F1C-846B-5754BD83718C}.Release|x86.Build.0 = Release|x86
+		{6310D366-6554-4A02-818C-DA6D9824D664}.Debug|x86.ActiveCfg = Debug|x86
+		{6310D366-6554-4A02-818C-DA6D9824D664}.Debug|x86.Build.0 = Debug|x86
+		{6310D366-6554-4A02-818C-DA6D9824D664}.Release|x86.ActiveCfg = Release|x86
+		{6310D366-6554-4A02-818C-DA6D9824D664}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

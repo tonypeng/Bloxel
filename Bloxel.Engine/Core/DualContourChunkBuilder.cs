@@ -200,7 +200,8 @@ namespace Bloxel.Engine.Core
         }
 
         public void PostProcess(Chunk c)
-        {/*
+        {
+            /*
             BuildBuffers(c);
             c.MarkDataInSync();
 
@@ -361,12 +362,12 @@ namespace Bloxel.Engine.Core
             sw.Start();
             CreateMinimizingVertices(c);
             sw.Stop();
-            //Console.WriteLine("CreateMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
+            Console.WriteLine("CreateMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
 
             sw.Restart();
             ConnectMinimizingVertices(c);
             sw.Stop();
-            //Console.WriteLine("ConnectMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
+            Console.WriteLine("ConnectMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
         }
 
         private void CreateMinimizingVertices(Chunk c)
@@ -677,7 +678,8 @@ namespace Bloxel.Engine.Core
                 Vector3 naturalNormal = _densityGradientFunction.df(intersectionPoint.X, intersectionPoint.Y, intersectionPoint.Z);
                 Vector3F8 compressedNaturalNormal = new Vector3F8(naturalNormal);
 
-                Vector3 normal = naturalNormal;
+                Vector3 normal = compressedNaturalNormal.ToVector3();
+                //normal = naturalNormal;
 
                 switch (dir)
                 {
@@ -773,9 +775,6 @@ namespace Bloxel.Engine.Core
 
         private void BuildBuffers(Chunk c)
         {
-            if (_vertices[c].Count <= 0 || _indices[c].Count <= 0)
-                return;
-
             VertexPositionNormalColorLight[] vertices = new VertexPositionNormalColorLight[_meshVertices[c].Count];
             short[] indices = new short[_indices[c].Count];
 
@@ -796,13 +795,22 @@ namespace Bloxel.Engine.Core
                 if (c.NormalsVertexBuffer != null)
                     c.NormalsVertexBuffer.Dispose();
 
-                c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionNormalColorLight), vertices.Length, BufferUsage.WriteOnly);
-                c.IndexBuffer = new DynamicIndexBuffer(_device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
-                c.NormalsVertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), normal.Length, BufferUsage.WriteOnly);
+                if (_vertices[c].Count <= 0 || _indices[c].Count <= 0)
+                {
+                    c.VertexBuffer = null;
+                    c.IndexBuffer = null;
+                    c.NormalsVertexBuffer = null;
+                }
+                else
+                {
+                    c.VertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionNormalColorLight), vertices.Length, BufferUsage.WriteOnly);
+                    c.IndexBuffer = new DynamicIndexBuffer(_device, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
+                    c.NormalsVertexBuffer = new DynamicVertexBuffer(_device, typeof(VertexPositionColor), normal.Length, BufferUsage.WriteOnly);
 
-                c.VertexBuffer.SetData<VertexPositionNormalColorLight>(vertices);
-                c.IndexBuffer.SetData<short>(indices);
-                c.NormalsVertexBuffer.SetData<VertexPositionColor>(normal);
+                    c.VertexBuffer.SetData<VertexPositionNormalColorLight>(vertices);
+                    c.IndexBuffer.SetData<short>(indices);
+                    c.NormalsVertexBuffer.SetData<VertexPositionColor>(normal);
+                }
             }
 
             //_vertices[c].Clear();
