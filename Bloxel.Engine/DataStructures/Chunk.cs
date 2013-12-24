@@ -201,7 +201,9 @@ namespace Bloxel.Engine.DataStructures
 
         public void SetLightLocal(int x, int y, int z, byte light)
         {
-            _points[ArrayUtil.Convert3DTo1D(x, y, z, _length, _height)].Metadata[0] = light;
+            int index = ArrayUtil.Convert3DTo1D(x, y, z, _length, _height);
+            GridPoint gp = _points[index];
+            gp.Metadata[0] = light;
         }
 
         public void SetLight(int x, int y, int z, byte light)

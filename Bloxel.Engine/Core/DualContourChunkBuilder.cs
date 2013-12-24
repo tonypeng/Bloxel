@@ -568,7 +568,7 @@ namespace Bloxel.Engine.Core
 
             intersectingEdges.UnionWith(edges);
 
-            Vector3 minimizingVertex = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.01f, 25);
+            Vector3 minimizingVertex = DualContouring.SchmitzVertexFromHermiteData(hermite, 0.001f, DualContouring.MAX_ITERATIONS);
 
             float light = (XYZ.Metadata[0] + XMaxYZ.Metadata[0] + XYMaxZ.Metadata[0] + XYZMax.Metadata[0] + XMaxYMaxZ.Metadata[0] + XMaxYZMax.Metadata[0] + XYMaxZMax.Metadata[0] + XMaxYMaxZMax.Metadata[0]);
             light /= 8; // average

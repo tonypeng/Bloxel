@@ -43,7 +43,7 @@ namespace Bloxel.Engine.Core
                             value = -1.0f;
 
                         GridPoint b = new GridPoint(0, value);
-                        c.SetPoint(x, y, z, b);
+                        c.SetPointLocal(x, y, z, b);
                     }
                 }
             }

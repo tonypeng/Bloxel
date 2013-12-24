@@ -1,2 +1,9 @@
 Content\Arial.xnb
-Content\Effects\TerrainColor.xnb
+Content\Bloxel\Fonts\UIFontTiny.xnb
+Content\Bloxel\Effects\TerrainColor.xnb
+Content\Bloxel\Effects\Deferred\Clear.xnb
+Content\Bloxel\Effects\Deferred\DirectionalLight.xnb
+Content\Bloxel\Effects\Deferred\PointLight.xnb
+Content\Bloxel\Effects\Deferred\RenderCombine.xnb
+Content\Bloxel\Effects\Deferred\RenderGBufferColor.xnb
+Content\Bloxel\Effects\Deferred\SSAO.xnb

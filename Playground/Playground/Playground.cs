@@ -123,9 +123,12 @@ namespace Playground
 
             int worldChunkHeight = 8;
 
+            SphereDensityFunction sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 7.5f);
+
             // 113188818 - test seed
             DualContourIslandChunkGenerator icg = new DualContourIslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
             DualContourFlatLandGenerator flg = new DualContourFlatLandGenerator();
+            DensityChunkGenerator dcg = new DensityChunkGenerator(sdf);
             DebuggerGenerator dg = new DebuggerGenerator();
 
             IChunkGenerator generator;
