@@ -87,10 +87,13 @@
     <Compile Include="Core\ITerrainGradientFunction.cs" />
     <Compile Include="Core\DualContourIslandChunkGenerator.cs" />
     <Compile Include="Core\NoLightingLightManager.cs" />
+    <Compile Include="Core\SineWaveDensityFunction.cs" />
     <Compile Include="DataStructures\DualContouringMetadataIndex.cs" />
     <Compile Include="DataStructures\DualContourModification.cs" />
     <Compile Include="DataStructures\Float8.cs" />
     <Compile Include="DataStructures\HalfVector3.cs" />
+    <Compile Include="Core\MeshBuildEventArgs.cs" />
+    <Compile Include="Core\MeshBuildEventHandler.cs" />
     <Compile Include="DataStructures\Vector3F8.cs" />
     <Compile Include="Utilities\NoiseGenerator.cs" />
     <Compile Include="Core\SimplexDensityFunction.cs" />

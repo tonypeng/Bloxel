@@ -55,6 +55,9 @@ namespace Bloxel.Engine.DataStructures
 
         public object GraphicsSync = new object();
 
+        public object Tag = new object();
+        public object TagSync = new object();
+
         public Chunk XNegative
         {
             get { return _world.ChunkManager[ChunkSpaceX - 1, ChunkSpaceY, ChunkSpaceZ]; }

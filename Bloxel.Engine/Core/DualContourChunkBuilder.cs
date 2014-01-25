@@ -145,6 +145,8 @@ namespace Bloxel.Engine.Core
         /// </summary>
         public bool RequiresPostProcess { get { return true; } }
 
+        public event MeshBuildEventHandler MeshBuilt;
+
         public DualContourChunkBuilder(GraphicsDevice device, World world, ITerrainGradientFunction densityGradientFunction, float minimumSolidDensity)
         {
             _device = device;
@@ -362,12 +364,12 @@ namespace Bloxel.Engine.Core
             sw.Start();
             CreateMinimizingVertices(c);
             sw.Stop();
-            Console.WriteLine("CreateMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
+            //Console.WriteLine("CreateMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
 
             sw.Restart();
             ConnectMinimizingVertices(c);
             sw.Stop();
-            Console.WriteLine("ConnectMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
+            //Console.WriteLine("ConnectMinimizingVertices(): {0}ms", sw.ElapsedMilliseconds);
         }
 
         private void CreateMinimizingVertices(Chunk c)
@@ -679,7 +681,7 @@ namespace Bloxel.Engine.Core
                 Vector3F8 compressedNaturalNormal = new Vector3F8(naturalNormal);
 
                 Vector3 normal = compressedNaturalNormal.ToVector3();
-                normal = naturalNormal;
+                //normal = naturalNormal;
 
                 switch (dir)
                 {
@@ -780,11 +782,27 @@ namespace Bloxel.Engine.Core
 
             _meshVertices[c].CopyTo(vertices);
             _indices[c].CopyTo(indices);
-            
+
             NormalizeNormals(c, vertices);
 
             VertexPositionColor[] normal = new VertexPositionColor[_normalVertices[c].Count];
             _normalVertices[c].CopyTo(normal);
+
+            Vector3[] verticesPos = new Vector3[vertices.Length];
+            int[] indices32 = new int[indices.Length];
+
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                verticesPos[i] = vertices[i].Position;
+            }
+
+            for (int i = 0; i < indices.Length; i++)
+            {
+                indices32[i] = indices[i];
+            }
+
+            if(MeshBuilt != null)
+                MeshBuilt(c, new MeshBuildEventArgs(verticesPos, indices32));
 
             lock (c.GraphicsSync)
             {

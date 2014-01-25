@@ -75,6 +75,7 @@
     <Reference Include="System.Net" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BEPUChunkTag.cs" />
     <Compile Include="BoundingBoxRenderer.cs" />
     <Compile Include="FPSCounter.cs" />
     <Compile Include="Generator\DebuggerGenerator.cs" />
@@ -90,6 +91,22 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\BEPUik\BEPUik.csproj">
+      <Project>{2D5A0344-623A-4BFA-AAB6-8AC64E2A4129}</Project>
+      <Name>BEPUik</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\BEPUphysicsDrawer\BEPUphysicsDrawer.csproj">
+      <Project>{A7931B1B-6BF4-43C5-B924-6AEB732243BA}</Project>
+      <Name>BEPUphysicsDrawer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\BEPUphysics\BEPUphysics.csproj">
+      <Project>{C0D52C9F-14B8-4008-8DDC-109C27561A5C}</Project>
+      <Name>BEPUphysics</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\BEPUutilities\BEPUutilities.csproj">
+      <Project>{34853DEA-43A6-4F2F-A379-D1EE04D256D2}</Project>
+      <Name>BEPUutilities</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Bloxel.Engine.DeferredRendering\Bloxel.Engine.DeferredRendering.csproj">
       <Project>{F653DD31-B134-4F1C-846B-5754BD83718C}</Project>
       <Name>Bloxel.Engine.DeferredRendering</Name>
@@ -97,6 +114,10 @@
     <ProjectReference Include="..\..\Bloxel.Engine\Bloxel.Engine.csproj">
       <Project>{92B1E191-4795-4F99-8C7E-6EE14DECFFD4}</Project>
       <Name>Bloxel.Engine</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ConversionHelper\ConversionHelper.csproj">
+      <Project>{BB5BF3E0-DD34-44D4-86FB-F336BB4720CA}</Project>
+      <Name>ConversionHelper</Name>
     </ProjectReference>
     <ProjectReference Include="..\PlaygroundContent\PlaygroundContent.contentproj">
       <Name>PlaygroundContent %28Content%29</Name>

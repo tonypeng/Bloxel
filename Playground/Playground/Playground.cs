@@ -11,6 +11,12 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 
+using BEPUphysics;
+using BEPUphysics.BroadPhaseEntries;
+using BEPUphysicsDrawer;
+using BEPUphysicsDrawer.Models;
+using ConversionHelper;
+
 using Bloxel.Engine.Cameras;
 using Bloxel.Engine.Core;
 using Bloxel.Engine.DataStructures;
@@ -20,6 +26,7 @@ using Bloxel.Engine.Utilities;
 using Bloxel.Engine.DeferredRendering;
 
 using Playground.Generator;
+using BEPUphysics.Entities.Prefabs;
 
 namespace Playground
 {
@@ -46,6 +53,11 @@ namespace Playground
 
         bool _paused = false;
 
+        Space _space;
+        object _physicsMutex = new object();
+
+        ModelDrawer modelDrawer;
+
         public Playground()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -69,6 +81,8 @@ namespace Playground
             Input.Create(this);
             Input.Get().Update();
 
+            modelDrawer = new InstancedModelDrawer(this);
+
             base.Initialize();
         }
 
@@ -80,6 +94,9 @@ namespace Playground
             contentLibrary.Load(GraphicsDevice, Content);
 
             basicEffect = new BasicEffect(GraphicsDevice);
+
+            _space = new Space();
+            _space.ForceUpdater.Gravity = MathConverter.Convert(new Vector3(0, -9.81f, 0));
 
             font = Content.Load<SpriteFont>("Arial");
 
@@ -124,25 +141,27 @@ namespace Playground
             int worldChunkHeight = 8;
 
             SphereDensityFunction sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 7.5f);
+            SineWaveDensityFunction swdf = new SineWaveDensityFunction(5, 10, 0.25f);
 
             // 113188818 - test seed
             DualContourIslandChunkGenerator icg = new DualContourIslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
             DualContourFlatLandGenerator flg = new DualContourFlatLandGenerator();
 
-            DensityChunkGenerator dcg = new DensityChunkGenerator(sdf);
+            DensityChunkGenerator dcg = new DensityChunkGenerator(swdf);
             DebuggerGenerator dg = new DebuggerGenerator();
 
             IChunkGenerator generator;
             ITerrainGradientFunction grad;
 
             generator = dcg;
-            grad = sdf;
+            grad = swdf;
 
             _world = new World(config, camManager);
-            _chunkManager = new StaticThreadedChunkManager(config, _world, 1, 1, 1);
+            _chunkManager = new StaticThreadedChunkManager(config, _world, 5, worldChunkHeight, 5);
             _chunkManager.ChunkSystem = new DualContourColoredChunkSystem(GraphicsDevice, contentLibrary, _chunkManager, camManager, _world, grad, 0.0f);
+            _chunkManager.ChunkSystem.Builder.MeshBuilt += new MeshBuildEventHandler(BuildPhysicsMesh);
             _chunkManager.ChunkGenerator = generator;
-            _chunkManager.LightManager = new FloodfillLightManager(_chunkManager, config, 1);
+            _chunkManager.LightManager = new FloodfillLightManager(_chunkManager, config, worldChunkHeight);
 
             _world.ChunkManager = _chunkManager;
 
@@ -154,9 +173,46 @@ namespace Playground
         {
         }
 
+        private void BuildPhysicsMesh(object o, MeshBuildEventArgs e)
+        {
+            Chunk chunk = (Chunk)o;
+
+            if (e.Vertices.Length <= 0) return;
+
+            lock (chunk.TagSync)
+            {
+                if (chunk.Tag != null && chunk.Tag is BEPUChunkTag)
+                {
+                    BEPUChunkTag tag = (BEPUChunkTag)chunk.Tag;
+
+                    lock (_physicsMutex)
+                    {
+                        _space.Remove(tag.Mesh);
+                        //modelDrawer.Remove(tag.Mesh.Mesh);
+                    }
+                }
+                else
+                {
+                    chunk.Tag = new BEPUChunkTag();
+                }
+
+                StaticMesh mesh = new StaticMesh(MathConverter.Convert(e.Vertices), e.Indices);
+
+                lock (_physicsMutex)
+                {
+                    _space.Add(mesh);
+                    //modelDrawer.Add(mesh.Mesh);
+                    ((BEPUChunkTag)chunk.Tag).Mesh = mesh;
+                }
+            }
+        }
+
         float timeout = 0;
         Vector3I pickedPos = Vector3I.One * -1;
         Vector3I sidePickedPos = Vector3I.One * -1;
+
+        bool drawPhysics = false;
+        bool wireFrame = false;
 
         protected override void Update(GameTime gameTime)
         {
@@ -165,9 +221,15 @@ namespace Playground
             if (Input.Get().IsKeyDown(Keys.Escape, true))
                 _paused = !_paused;
 
-            if (Input.Get().IsKeyDown(Keys.F2, true)) _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME);
+            if (Input.Get().IsKeyDown(Keys.F2, true))
+            {
+                _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_WIREFRAME);
+                wireFrame = !wireFrame;
+            }
+
             if (Input.Get().IsKeyDown(Keys.F3, true)) _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_NORMALS);
             if (Input.Get().IsKeyDown(Keys.F4, true)) _chunkManager.ChunkSystem.Renderer.ToggleDebugMode(ChunkRendererDebugOptions.DEBUG_DRAW_RENDERTARGETS);
+            if (Input.Get().IsKeyDown(Keys.F5, true)) drawPhysics = !drawPhysics;
 
             if (Input.Get().IsKeyDown(Keys.F5, true))
             {
@@ -465,7 +527,30 @@ namespace Playground
                 }
             }
 
+            if (Input.Get().IsKeyDown(Keys.B, true))
+            {
+                Sphere sphere = new Sphere(MathConverter.Convert(cam.Position + cam.Forward * 2), 1.0f, 1);
+                sphere.LinearVelocity = MathConverter.Convert(cam.Forward * 5);
+
+                lock (_physicsMutex)
+                {
+                    _space.Add(sphere);
+                    modelDrawer.Add(sphere);
+                }
+            }
+
             _world.Update(gameTime);
+
+            lock (_physicsMutex)
+            {
+                _space.Update();
+
+                if (drawPhysics)
+                {
+                    modelDrawer.IsWireframe = wireFrame;
+                    modelDrawer.Update();
+                }
+            }
 
             _fpsCounter.Update(gameTime);
 
@@ -477,6 +562,12 @@ namespace Playground
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
             _chunkManager.ChunkSystem.Renderer.RenderAll();
+
+            lock (_physicsMutex)
+            {
+                if (drawPhysics)
+                    modelDrawer.Draw(MathConverter.Convert(cam.View), MathConverter.Convert(cam.Projection));
+            }
 
             /*
             for (int x = 5; x < 11; x++)

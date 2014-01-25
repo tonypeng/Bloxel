@@ -20,6 +20,8 @@ namespace Bloxel.Engine.Core
     {
         bool RequiresPostProcess { get; }
 
+        event MeshBuildEventHandler MeshBuilt;
+
         void Build(Chunk c);
         void PostProcess(Chunk c);
     }

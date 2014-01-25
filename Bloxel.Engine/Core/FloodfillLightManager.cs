@@ -70,7 +70,7 @@ namespace Bloxel.Engine.Core
 
                             ch.SetLightLocal(x, y, z, light);
 
-                            if(worldX == 25 && worldZ == 19)
+                            if (worldX == 25 && worldZ == 19)
                                 Console.WriteLine("{0},{1},{2}: {3}", worldX, worldY, worldZ, light);
                         }
                     }
