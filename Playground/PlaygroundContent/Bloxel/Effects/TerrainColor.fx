@@ -24,6 +24,7 @@ float FogBegin;
 float FogEnd;
 float4 FogColor;
 
+bool CPULightingEnabled = false;
 float AmbientLight = 0.1;
 
 float3 LightDirection;
@@ -42,8 +43,14 @@ PixelInput SolidVertexShader(VertexInput input)
 	float3 normal = normalize(mul(normalize(input.Normal), xWorld));
 	
 	float normalComponent = min(saturate(saturate(dot(normal, -LightDirection)) + 0.4), saturate(saturate(dot(normal, -LightDirection2)) + 0.4));
-		
-	output.Light = saturate(input.Light * normalComponent + AmbientLight);
+
+	float lightComponent = normalComponent;
+
+	if(CPULightingEnabled) {
+		lightComponent *= input.Light;
+	}
+
+	output.Light = saturate(lightComponent + AmbientLight);
 
 	output.Color = input.Color;
 

@@ -22,6 +22,8 @@ namespace Bloxel.Engine.Core
 {
     public class ColoredChunkRenderer : IChunkRenderer
     {
+        private EngineConfiguration _config;
+
         private BasicEffect basicEffect;
         private Effect _terrainColorEffect;
         private GraphicsDevice _device;
@@ -36,6 +38,8 @@ namespace Bloxel.Engine.Core
 
         public ColoredChunkRenderer(EngineConfiguration config, ContentLibrary contentLibrary, GraphicsDevice device, CameraManager cameraManager, IChunkManager chunkManager)
         {
+            _config = config;
+
             _device = device;
 
             _terrainColorEffect = contentLibrary.TerrainColorEffect;
@@ -80,6 +84,8 @@ namespace Bloxel.Engine.Core
 
             _terrainColorEffect.Parameters["LightDirection"].SetValue(new Vector3(0.5f, -1f, 0.5f));
             _terrainColorEffect.Parameters["LightDirection2"].SetValue(new Vector3(-0.5f, -1f, -0.5f));
+
+            _terrainColorEffect.Parameters["CPULightingEnabled"].SetValue(_config.CPULightingEnabled);
 
             foreach (EffectPass pass in _terrainColorEffect.CurrentTechnique.Passes)
             {

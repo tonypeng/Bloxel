@@ -1,3 +1,12 @@
+/*
+ * Bloxel - Playground.cs
+ * Copyright (c) 2013 Tony "untitled" Peng
+ * <http://www.tonypeng.com/>
+ * 
+ * This file is subject to the terms and conditions defined in the
+ * file 'LICENSE.txt', which is part of this source code package.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -107,25 +116,6 @@ namespace Playground
             camManager.AddCamera("player", cam);
             camManager.MainCameraName = "player";
 
-            /*
-            Console.WriteLine("Creating chunk...");
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            chunk = new Chunk(null, Vector3I.Zero, 16, 16, 16);
-            sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 6f);
-            
-            DensityChunkGenerator dcg = new DensityChunkGenerator(simplexDensityFunction);
-            dcg.Generate(chunk);
-            sw.Stop();
-            Console.WriteLine("Done in {0}ms.", sw.ElapsedMilliseconds);
-            Console.WriteLine("Density at (7, 7, 7): {0}", chunk.PointAt(7, 7, 7).Density);
-            Console.WriteLine("Building chunk mesh...");
-            DualContourChunkBuilder dccb = new DualContourChunkBuilder(GraphicsDevice, simplexDensityFunction, 0.6f);
-            sw.Restart();
-            dccb.Build(chunk);
-            sw.Stop();
-            Console.WriteLine("Done in {0}ms.", sw.Elapsed.TotalMilliseconds);*/
-
             simplexDensityFunction = new SimplexDensityFunction(0.01f, 0.1f);
 
             EngineConfiguration config = new EngineConfiguration();
@@ -143,7 +133,6 @@ namespace Playground
             SphereDensityFunction sdf = new SphereDensityFunction(new Vector3(8, 8, 8), 7.5f);
             SineWaveDensityFunction swdf = new SineWaveDensityFunction(5, 10, 0.25f);
 
-            // 113188818 - test seed
             DualContourIslandChunkGenerator icg = new DualContourIslandChunkGenerator(worldChunkHeight * config.ChunkHeight, new SimplexNoiseGenerator(Environment.TickCount));
             DualContourFlatLandGenerator flg = new DualContourFlatLandGenerator();
 
@@ -153,8 +142,8 @@ namespace Playground
             IChunkGenerator generator;
             ITerrainGradientFunction grad;
 
-            generator = dcg;
-            grad = swdf;
+            generator = icg;
+            grad = icg;
 
             _world = new World(config, camManager);
             _chunkManager = new StaticThreadedChunkManager(config, _world, 5, worldChunkHeight, 5);
@@ -569,18 +558,6 @@ namespace Playground
                     modelDrawer.Draw(MathConverter.Convert(cam.View), MathConverter.Convert(cam.Projection));
             }
 
-            /*
-            for (int x = 5; x < 11; x++)
-            {
-                for (int y = 5; y < 11; y++)
-                {
-                    for (int z = 5; z < 11; z++)
-                    {
-                            BoundingBoxRenderer.Render(GraphicsDevice, new BoundingBox(new Vector3(x, y, z), new Vector3(x + 1, y + 1, z + 1)), Color.Gold, cam);
-                    }
-                }
-            }*/
-
             if (pickedPos != Vector3I.One * -1)
             {
                 BoundingBox picked = new BoundingBox(pickedPos.ToVector3() - 0.55f * Vector3.One, pickedPos.ToVector3() + 0.55f * Vector3.One);
@@ -598,16 +575,6 @@ namespace Playground
                 BoundingBox b6 = new BoundingBox(pickedPos.ToVector3() + Vector3.Left + Vector3.Down, pickedPos.ToVector3() + Vector3.Backward);
                 BoundingBox b7 = new BoundingBox(pickedPos.ToVector3() + Vector3.Forward + Vector3.Down, pickedPos.ToVector3() + Vector3.Right);
                 BoundingBox b8 = new BoundingBox(pickedPos.ToVector3() + Vector3.Left + Vector3.Forward + Vector3.Down, pickedPos.ToVector3());
-
-                /*
-                BoundingBoxRenderer.Render(GraphicsDevice, b1, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b2, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b3, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b4, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b5, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b6, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b7, Color.Red, camManager.MainCamera);
-                BoundingBoxRenderer.Render(GraphicsDevice, b8, Color.Red, camManager.MainCamera);*/
             }
 
             spriteBatch.Begin();
