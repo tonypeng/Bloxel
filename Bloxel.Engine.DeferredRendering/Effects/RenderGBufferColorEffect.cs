@@ -1,4 +1,13 @@
-﻿using Microsoft.Xna.Framework;
+﻿/*
+ * Bloxel - RenderGBufferColorEffect.cs
+ * Copyright (c) 2013 Tony "untitled" Peng
+ * <http://www.tonypeng.com/>
+ * 
+ * This file is subject to the terms and conditions defined in the
+ * file 'LICENSE.txt', which is part of this source code package.
+ */
+
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 

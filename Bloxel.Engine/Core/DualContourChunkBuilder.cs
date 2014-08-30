@@ -667,7 +667,7 @@ namespace Bloxel.Engine.Core
 
                 Vector3I delta = (corner2 - corner1) * (corner1Point.Density < _minimumSolidDensity ? -1 : 1); // negate if corner1 is less than the isovalue because we assume corner2 at first.
                 Direction dir = GetDirectionFromDelta(delta);
-
+                 
                 xEdges.Add(new Edge(corner1, corner2, dir));
 
                 Vector3 intersectionPoint = DualContouring.InterpolateIntersectionPoint(_minimumSolidDensity, corner1.ToVector3(), corner2.ToVector3(),
